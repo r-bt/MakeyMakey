@@ -1,14 +1,14 @@
--- Modified from https://github.com/PreSenseRadar/OpenRadar/blob/master/scripts/1642_mmwavestudio_config.luax
+-- Modified from https://github.com/PreSenseRadar/OpenRadar/blob/master/scripts/1642_mmwavestudio_config.lua
 
 -- Radar Settings (Original)
 -- 3 Tx 4 Rx | complex 1x
 
 COM_PORT = 12
-RADARSS_PATH = "C:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\radarss\\xwr12xx_xwr14xx_radarss.bin"
-MASTERSS_PATH = "C:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\masterss\\xwr12xx_xwr14xx_masterss.bin"
-SAVE_DATA_PATH = "D:\\data\\adc_data.bin"
-DUMP_DATA_PATH = "D:\\data\\adc_data_RAW_0.bin"
-PKT_LOG_PATH  = "D:\\data\\pktlogfile.txt"
+RADARSS_PATH = "E:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\radarss\\xwr12xx_xwr14xx_radarss.bin"
+MASTERSS_PATH = "E:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\masterss\\xwr12xx_xwr14xx_masterss.bin"
+SAVE_DATA_PATH = "C:\\Users\\Nikek\\Documents\\data\\adc_data.bin"
+DUMP_DATA_PATH = "C:\\Users\\Nikek\\Documents\\data\\adc_data_RAW_0.bin"
+PKT_LOG_PATH  = "C:\\Users\\Nikek\\Documents\\data\\pktlogfile.txt"
 
 --------------------------------------------
 
@@ -34,7 +34,7 @@ RX_GAIN = 30 -- dB
 
 -- FrameConfig
 START_CHIRP_TX = 0
-END_CHIRP_TX = 2 -- 2 for 1843
+END_CHIRP_TX = 0 -- 2 for 1843
 NUM_FRAMES = 0 -- Set this to 0 to continuously stream data
 CHIRP_LOOPS = 128 --    //32
 PERIODICITY = 70 -- ms  //30
@@ -80,7 +80,7 @@ ar1.LVDSLaneConfig(0, 1, 1, 0, 0, 1, 0, 0)
 -------- SENSOR CONFIG STUFF --------
 ar1.ProfileConfig(0, START_FREQ, IDLE_TIME, ADC_START_TIME, RAMP_END_TIME, 0, 0, 0, 0, 0, 0, FREQ_SLOPE, 0, ADC_SAMPLES, SAMPLE_RATE, 0, 0, RX_GAIN)
 ar1.ChirpConfig(0, 0, 0, 0, 0, 0, 0, 1, 1, 0)
-ar1.FrameConfig(START_CHIRP_TX, END_CHIRP_TX, NUM_FRAMES, CHIRP_LOOPS, PERIODICITY, 0, 1)
+ar1.FrameConfig(START_CHIRP_TX, END_CHIRP_TX, NUM_FRAMES, CHIRP_LOOPS, PERIODICITY, 0, 0, 1)
 -------------------------------------
 
 -------- ETHERNET STUFF --------
