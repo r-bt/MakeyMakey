@@ -1,3 +1,20 @@
+# import rospy
+# from std_msgs.msg import String
+import os
+import time
+import sys
+import socket
+import serial
+import pdb
+import struct
+import numpy as np
+# import RadarRT_lib
+# from circular_buffer import ring_buffer
+import Queue
+from  ctypes import *
+from radar_config import dict_to_list
+
+
 class mmWave_Sensor():
     iwr_rec_cmd = ['sensorStop', 'sensorStart']
     # dca1000evm configuration commands; only the ones used are filled in
@@ -40,9 +57,9 @@ class mmWave_Sensor():
         #self.data_socket.setblocking(True)
         self.data_socket_open = True
 
-        # self.seqn = 0  # this is the last packet index
-        # self.bytec = 0 # this is a byte counter
-        # self.q = Queue.Queue()
+        self.seqn = 0  # this is the last packet index
+        self.bytec = 0 # this is a byte counter
+        self.q = Queue.Queue()
         # frame_len = 2*rospy.get_param('iwr_cfg/profiles')[0]['adcSamples']*rospy.get_param('iwr_cfg/numLanes')*rospy.get_param('iwr_cfg/numChirps')
         # self.data_array = ring_buffer(int(2*frame_len), int(frame_len))
 
@@ -107,27 +124,27 @@ class mmWave_Sensor():
         self.collect_response()
         print("")
 
-        # # configure IWR
-        # print("CONFIGURE IWR")
-        # iwr_cfg_cmd = dict_to_list(rospy.get_param('iwr_cfg'))
-        # # Send and read a few CR to clear things in buffer. Happens sometimes during power on
-        # for i in range(5):
-        #     self.iwr_serial.write('\r'.encode())
-        #     self.iwr_serial.reset_input_buffer()
-        #     time.sleep(.1)
+        # configure IWR
+        print("CONFIGURE IWR")
+        iwr_cfg_cmd = dict_to_list(rospy.get_param('iwr_cfg'))
+        # Send and read a few CR to clear things in buffer. Happens sometimes during power on
+        for i in range(5):
+            self.iwr_serial.write('\r'.encode())
+            self.iwr_serial.reset_input_buffer()
+            time.sleep(.1)
 
-        # for cmd in iwr_cfg_cmd:
-        #     for i in range(len(cmd)):
-        #         self.iwr_serial.write(cmd[i].encode('utf-8'))
-        #         time.sleep(0.010)  # 10 ms delay between characters
-        #     self.iwr_serial.write('\r'.encode())
-        #     self.iwr_serial.reset_input_buffer()
-        #     time.sleep(0.010)       # 10 ms delay between characters
-        #     time.sleep(0.100)       # 100 ms delay between lines
-        #     response = self.iwr_serial.read(size=6)
-        #     print('LVDS Stream:/>' + cmd)
-        #     print(response[2:].decode())
-        # print("")
+        for cmd in iwr_cfg_cmd:
+            for i in range(len(cmd)):
+                self.iwr_serial.write(cmd[i].encode('utf-8'))
+                time.sleep(0.010)  # 10 ms delay between characters
+            self.iwr_serial.write('\r'.encode())
+            self.iwr_serial.reset_input_buffer()
+            time.sleep(0.010)       # 10 ms delay between characters
+            time.sleep(0.100)       # 100 ms delay between lines
+            response = self.iwr_serial.read(size=6)
+            print('LVDS Stream:/>' + cmd)
+            print(response[2:].decode())
+        print("")
 
     def arm_dca(self):
         if not self.dca_socket:
@@ -188,7 +205,7 @@ class mmWave_Sensor():
         #self.data_array.add_msg(np.frombuffer(msg[10:], dtype=np.int16))
         #py_time_end = time.clock()
 
-        self.data_array.pad_and_add_msg(self.seqn, seqn, np.frombuffer(msg[10:], dtype=np.int16))
+        # self.data_array.pad_and_add_msg(self.seqn, seqn, np.frombuffer(msg[10:], dtype=np.int16))
         #c_time_end = time.clock()
 
         #print("Python took " + str(py_time_end - py_time_start) + ", c took " + str(c_time_end - py_time_end) )
@@ -196,24 +213,15 @@ class mmWave_Sensor():
         self.seqn = seqn
         self.bytec = bytec
 
-if __name__ == '__main__':
-    import time
-    import socket
-    import serial
-    import struct
-    import numpy as np
+        print("Frame size: " + str(len(msg[10:])))
 
+if __name__ == '__main__':
     sensor = mmWave_Sensor()
     sensor.setupDCA_and_cfgIWR()
-    # sensor.arm_dca()
+    sensor.arm_dca()
+    sensor.toggle_capture(1)
 
-    # # Start the capture
-    # sensor.toggle_capture(1)
+    while True:
+        sensor.collect_data()
+        #time.sleep(0.1)
 
-    # # Collect data for 10 seconds
-    # start_time = time.time()
-    # while time.time() - start_time < 10:
-    #     sensor.collect_data()
-
-    # # Stop the capture
-    # sensor.toggle_capture(0)
