@@ -1,5 +1,6 @@
-from datatime import datetime
-from src.xwr.dcapub import DCAPub
+from datetime import datetime
+from xwr.dcapub import DCAPub
+import argparse
 
 class Radar():
 
@@ -15,18 +16,21 @@ class Radar():
             cfg=cfg_path,
         )
 
+        print("DCA1000 conected!")
+
         try:
             while True:
-                frame_data, new_frame = radar.update_frame_buffer()
+                frame_data, new_frame = self.radar.update_frame_buffer()
                 
                 if new_frame:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    print(f"Frame received at {timestamp}")
+                    msg = {'data': frame_data, 'timestamp': timestamp}
+
+                    print(msg)
 
         except KeyboardInterrupt:
             print("Stopping radar...")
-            break
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")

@@ -44,14 +44,16 @@ class DCA1000:
         self.host_data_addr = (host_ip, host_data_port)
 
         # Setup command socket.
-        self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.cmd_socket.bind(self.host_cmd_addr)
-        self.cmd_socket.settimeout(10)
+        if host_cmd_port:
+            self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.cmd_socket.bind(self.host_cmd_addr)
+            self.cmd_socket.settimeout(10)
 
         # Setup data socket.
-        self.data_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.data_socket.bind(self.host_data_addr)
-        self.data_socket.setblocking(True)
+        if host_data_port:
+            self.data_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.data_socket.bind(self.host_data_addr)
+            self.data_socket.setblocking(True)
 
         self.capturing = False
 

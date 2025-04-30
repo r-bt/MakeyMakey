@@ -3,14 +3,14 @@
 -- Radar Settings (Original)
 -- 3 Tx 4 Rx | complex 1x
 
-COM_PORT = 12
-RADARSS_PATH = "E:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\radarss\\xwr12xx_xwr14xx_radarss.bin"
-MASTERSS_PATH = "E:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\masterss\\xwr12xx_xwr14xx_masterss.bin"
+COM_PORT = 9
+RADARSS_PATH = "C:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\radarss\\xwr12xx_xwr14xx_radarss.bin"
+MASTERSS_PATH = "C:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\masterss\\xwr12xx_xwr14xx_masterss.bin"
 
 -- Paths to save data to, modify as needed
-SAVE_DATA_PATH = "C:\\Users\\Nikek\\Documents\\data\\adc_data.bin"
-DUMP_DATA_PATH = "C:\\Users\\Nikek\\Documents\\data\\adc_data_RAW_0.bin"
-PKT_LOG_PATH  = "C:\\Users\\Nikek\\Documents\\data\\pktlogfile.txt"
+SAVE_DATA_PATH = "C:\\Users\\Win WIn Tjong\\Documents\\data\\adc_data.bin"
+DUMP_DATA_PATH = "C:\\Users\\Win WIn Tjong\\Documents\\data\\adc_data_RAW_0.bin"
+PKT_LOG_PATH  = "C:\\Users\\Win WIn Tjong\\Documents\\data\\pktlogfile.txt"
 
 --------------------------------------------
 
