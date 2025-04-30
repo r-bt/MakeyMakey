@@ -9,10 +9,10 @@ import time
 import socket
 from typing import List
 
-from radar_config import RadarConfig
-from radar_cli import RadarCLI
-from dca1000 import DCA1000
-from frame_buffer import FrameBuffer
+from src.radar_config import RadarConfig
+from src.radar_cli import RadarCLI
+from src.dca1000 import DCA1000
+from src.frame_buffer import FrameBuffer
 
 class RadarPub():
     """Radar data publisher. Consists of a DCA1000 and a RadarCLI.
