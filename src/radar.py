@@ -4,7 +4,7 @@ import argparse
 
 class Radar():
 
-    def __init__(self, cfg_path: str):
+    def __init__(self, cfg_path: str, cb=None):
         """
         Initializes the radar object, starts recording, and publishes the data.
 
@@ -27,7 +27,8 @@ class Radar():
 
                     msg = {'data': frame_data, 'timestamp': timestamp}
 
-                    print(msg)
+                    if callback:
+                        callback(msg)
 
         except KeyboardInterrupt:
             print("Stopping radar...")
