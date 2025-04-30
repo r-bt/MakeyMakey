@@ -6,6 +6,8 @@
 COM_PORT = 12
 RADARSS_PATH = "E:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\radarss\\xwr12xx_xwr14xx_radarss.bin"
 MASTERSS_PATH = "E:\\ti\\mmwave_studio_02_01_01_00\\rf_eval_firmware\\masterss\\xwr12xx_xwr14xx_masterss.bin"
+
+-- Paths to save data to, modify as needed
 SAVE_DATA_PATH = "C:\\Users\\Nikek\\Documents\\data\\adc_data.bin"
 DUMP_DATA_PATH = "C:\\Users\\Nikek\\Documents\\data\\adc_data_RAW_0.bin"
 PKT_LOG_PATH  = "C:\\Users\\Nikek\\Documents\\data\\pktlogfile.txt"
@@ -48,11 +50,9 @@ ar1.Connect(COM_PORT,921600,1000)
 
 -------- https://cdn.vox-cdn.com/thumbor/2q97YCXcLOlkoR2jKKEMQ-wkG9k=/0x0:900x500/1200x800/filters:focal(378x178:522x322)/cdn.vox-cdn.com/uploads/chorus_image/image/49493993/this-is-fine.0.jpg --------
 ar1.Calling_IsConnected()
-ar1.SelectChipVersion("AR1642")
 ar1.frequencyBandSelection("77G")
-ar1.SelectChipVersion("XWR1843")
-ar1.SelectChipVersion("AR1642")
-ar1.SelectChipVersion("XWR1843")
+ar1.SelectChipVersion("AR1243")
+ar1.SelectChipVersion("XWR1443")
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -------- DOWNLOAD FIRMARE --------
