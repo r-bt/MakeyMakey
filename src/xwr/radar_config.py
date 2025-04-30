@@ -101,7 +101,7 @@ class RadarConfig(OrderedDict):
         n_samples = self["ADC_SAMPLES"]
 
         # Calculate the frame size
-        frame_size = n_samples * n_rx * n_chirps * 2 * (2 if adc_output_fmt > 0 else 1)
+        frame_size = n_samples * n_rx * n_chirps * 2 * (2 if adc_output_fmt > 0 else 1) # For each chrip we collect n_samples for each rx antenna where each sample is 2 bytes and we collect I and Q if complex
 
         # Calculate the frame time
         frame_time = self["PERIODICITY"]

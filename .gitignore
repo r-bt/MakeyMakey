@@ -1,1 +1,8 @@
 *.pyc
+data/*
+__pycache__/
+*.egg-info/
+*.egg
+*.log
+*.pkl
+.DS_Store
