@@ -6,6 +6,9 @@ import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
 import sys
 import threading
+import queue
+
+q = queue.Queue()
 
 
 class IQPlot(QtWidgets.QMainWindow):
@@ -47,7 +50,8 @@ def update_frame(msg):
     global iq_plot
     # reshape if needed
     iq = reshaped_frame.reshape(-1)  # Flatten the array
-    iq_plot.update(iq)
+
+    q.put(iq)  # Put the data in the queue
 
 
 def radar_thread(cfg, callback):
@@ -77,5 +81,17 @@ if __name__ == "__main__":
         target=radar_thread, args=(args.cfg, update_frame), daemon=True
     )
     radar_thread_instance.start()
+
+    # Main loop to update the plot
+    while True:
+        if not q.empty():
+            iq_data = q.get()
+            iq_plot.update(iq_data)
+
+        # Process Qt events
+        app.processEvents()
+
+        # Sleep for a short duration to avoid busy waiting
+        QtCore.QThread.msleep(10)
 
     sys.exit(app.exec_())
