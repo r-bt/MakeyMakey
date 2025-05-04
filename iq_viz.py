@@ -6,9 +6,9 @@ import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
 import sys
 import threading
-import queue
+from PyQt5.QtCore import QTimer
 
-q = queue.Queue()
+from queue import Queue
 
 
 class IQPlot(QtWidgets.QMainWindow):
@@ -82,16 +82,14 @@ if __name__ == "__main__":
     )
     radar_thread_instance.start()
 
-    # Main loop to update the plot
-    while True:
+    # Use QTimer to periodically check the queue and update the plot
+    def process_queue():
         if not q.empty():
             iq_data = q.get()
             iq_plot.update(iq_data)
 
-        # Process Qt events
-        app.processEvents()
-
-        # Sleep for a short duration to avoid busy waiting
-        QtCore.QThread.msleep(10)
+    timer = QTimer()
+    timer.timeout.connect(process_queue)
+    timer.start(10)  # Check the queue every 10 ms
 
     sys.exit(app.exec_())
