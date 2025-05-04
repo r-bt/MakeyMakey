@@ -3,24 +3,36 @@ from src.radar import Radar
 import numpy as np
 from src.dsp import reshape_frame
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore
+import sys
+
+
+class IQPlot(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Live IQ Plot")
+        self.plot_widget = pg.PlotWidget()
+        self.setCentralWidget(self.plot_widget)
+
+        self.scatter = pg.ScatterPlotItem(
+            size=2, pen=None, brush=pg.mkBrush(0, 255, 255, 150)
+        )
+        self.plot_widget.addItem(self.scatter)
+        self.plot_widget.setAspectLocked(True)
+        self.plot_widget.setLabel("bottom", "In-phase (I)")
+        self.plot_widget.setLabel("left", "Quadrature (Q)")
+
+    def update(self, iq_data: np.ndarray):
+        """Expects iq_data to be a 1D complex numpy array."""
+        if iq_data.size == 0:
+            return
+        pos = np.column_stack((iq_data.real, iq_data.imag))
+        self.scatter.setData(pos=pos)
+
 
 n_receivers = 4
 samples_per_chirp = 128
 n_chirps_per_frame = 128
-
-# --- Setup live plot window ---
-app = QtGui.QApplication([])
-win = pg.GraphicsLayoutWidget(show=True, title="Live IQ Plot")
-plot = win.addPlot(title="IQ Samples on XY Plane")
-scatter = pg.ScatterPlotItem(
-    size=3, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 120)
-)
-plot.addItem(scatter)
-plot.setLabel("left", "Quadrature (Q)")
-plot.setLabel("bottom", "In-phase (I)")
-plot.setAspectLocked(True)
-win.resize(600, 600)
 
 
 def update_frame(msg):
@@ -31,11 +43,14 @@ def update_frame(msg):
         n_receivers,
     )
 
-    # Plot the IQ samples
-    iq = reshaped_frame.reshape(-1)
-    scatter.setData(pos=np.column_stack((iq.real, iq.imag)))
-    QtGui.QApplication.processEvents()  # flush GUI updates
+    global iq_plot
+    # reshape if needed
+    iq = reshaped_frame.reshape(-1)  # Flatten the array
+    iq_plot.update(iq)
 
+
+# Global IQPlot instance for access in callback
+iq_plot = None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
@@ -43,6 +58,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    app = QtWidgets.QApplication(sys.argv)
+    iq_plot = IQPlot()
+    iq_plot.resize(600, 600)
+    iq_plot.show()
+
     # Initialize the radar
     radar = Radar(args.cfg, cb=update_frame)
-    QtGui.QApplication.instance().exec_()
+
+    sys.exit(app.exec_())
