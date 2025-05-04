@@ -6,6 +6,7 @@ import numpy as np
 n_receivers = 4
 samples_per_chirp = 128
 n_chirps_per_frame = 128
+n_tdm = 1
 
 
 def normalize_and_color(data, max_val=0, cmap=None):
@@ -31,7 +32,9 @@ def fft_processs(adc_samples):
     return fft_mag
 
 
-def reshape_frame(data, n_chirps_per_frame, samples_per_chirp, n_receivers):
+def reshape_frame(msg, n_chirps_per_frame, samples_per_chirp, n_receivers):
+    data = np.array(msg['data'], dtype=np.int16)
+
     data = data.reshape(-1, 8)  # Assuming we have 4 antennas
 
     data = data[:, :4] + 1j * data[:, 4:]
@@ -45,17 +48,27 @@ def reshape_frame(data, n_chirps_per_frame, samples_per_chirp, n_receivers):
 
     return data
 
+prev_frame = None
 
 def update_frame(data):
+    global prev_frame
     reshaped_frame = reshape_frame(
         data, n_chirps_per_frame, samples_per_chirp, n_receivers
     )
+
+    raw_frame = reshaped_frame
+
+    reshaped_frame = reshaped_frame if prev_frame is None else reshaped_frame - prev_frame
+
+    prev_frame = raw_frame
 
     # Process the data
     fft_data = fft_processs(reshaped_frame)
 
     # Normalize and color the data
-    img = normalize_and_color(fft_data, max_val=100, cmap=cv2.COLORMAP_JET)
+    img = normalize_and_color(fft_data, max_val=0, cmap=cv2.COLORMAP_JET)
+
+    img = cv2.resize(img, (800, 600))
 
     # Display the image
     cv2.imshow("FFT Data", img)

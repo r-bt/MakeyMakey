@@ -1,5 +1,5 @@
 from datetime import datetime
-from xwr.dcapub import DCAPub
+from src.xwr.dcapub import DCAPub
 import argparse
 
 class Radar():
@@ -27,8 +27,8 @@ class Radar():
 
                     msg = {'data': frame_data, 'timestamp': timestamp}
 
-                    if callback:
-                        callback(msg)
+                    if cb:
+                        cb(msg)
 
         except KeyboardInterrupt:
             print("Stopping radar...")

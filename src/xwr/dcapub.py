@@ -10,9 +10,9 @@ Modified from: https://github.com/ConnectedSystemsLab/xwr_raw_ros/blob/main/src/
 import socket
 from typing import List
 
-from xwr.radar_config import RadarConfig
-from xwr.dca1000 import DCA1000
-from xwr.frame_buffer import FrameBuffer
+from src.xwr.radar_config import RadarConfig
+from src.xwr.dca1000 import DCA1000
+from src.xwr.frame_buffer import FrameBuffer
 
 
 class DCAPub:
