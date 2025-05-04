@@ -2,6 +2,9 @@
 Records data from the DCA1000
 """
 import argparse
+from datetime import datetime
+import csv
+import json
 
 from src.radar import Radar
 
@@ -15,8 +18,8 @@ def init_writer():
     if writer is None:
         filename = "data/radar_data_{}.csv".format(datetime.now().strftime("%Y%m%d_%H%M%S"))
 
-        f = open(file_path, "w", newline="")
-        writer = csv.DictWriter(file, fieldnames=['data', 'timestamp'])
+        f = open(filename, "w", newline="")
+        writer = csv.DictWriter(f, fieldnames=['data', 'timestamp'])
         writer.writeheader()
 
 
@@ -27,7 +30,7 @@ def log(msg):
     global writer
 
     writer.writerow({
-        'data': json.dumps(msg.get('data')),
+        'data': json.dumps(msg.get('data').tolist()),
         'timestamp': msg.get('timestamp')
     })
 
