@@ -5,6 +5,7 @@ from src.dsp import reshape_frame
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
 import sys
+import threading
 
 
 class IQPlot(QtWidgets.QMainWindow):
@@ -49,6 +50,14 @@ def update_frame(msg):
     iq_plot.update(iq)
 
 
+def radar_thread(cfg, callback):
+    """
+    This function runs in a separate thread to handle the radar data.
+    It initializes the radar and starts receiving data.
+    """
+    radar = Radar(cfg, cb=callback)
+
+
 # Global IQPlot instance for access in callback
 iq_plot = None
 
@@ -64,6 +73,9 @@ if __name__ == "__main__":
     iq_plot.show()
 
     # Initialize the radar
-    radar = Radar(args.cfg, cb=update_frame)
+    radar_thread_instance = threading.Thread(
+        target=radar_thread, args=(args.cfg, update_frame), daemon=True
+    )
+    radar_thread_instance.start()
 
     sys.exit(app.exec_())
