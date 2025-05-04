@@ -9,13 +9,13 @@ samples_per_chirp = 128
 n_chirps_per_frame = 128
 
 
-def update_frame(data):
+def update_frame(msg):
     reshaped_frame = reshape_frame(
-        data, n_chirps_per_frame, samples_per_chirp, n_receivers
+        np.array(msg['data'], dtype=np.int16), n_chirps_per_frame, samples_per_chirp, n_receivers
     )
 
     # Plot the IQ samples
-    iq = data.reshape(-1)  # shape: (n_chirps * n_samples * n_rx,)
+    iq = reshaped_frame.reshape(-1)  # shape: (n_chirps * n_samples * n_rx,)
     plt.figure(figsize=(6, 6))
     plt.plot(iq.real, iq.imag, ".", markersize=1)
     plt.xlabel("In-phase (I)")
