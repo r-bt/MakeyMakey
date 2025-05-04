@@ -1,14 +1,10 @@
 import argparse
-from src.radar import Radar
 import numpy as np
 from src.dsp import reshape_frame
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
 import sys
-import threading
-from PyQt5.QtCore import QTimer
-
-from queue import Queue
+import pandas as pd
 
 
 class IQPlot(QtWidgets.QMainWindow):
@@ -38,36 +34,9 @@ n_receivers = 4
 samples_per_chirp = 128
 n_chirps_per_frame = 128
 
-
-def update_frame(msg):
-    reshaped_frame = reshape_frame(
-        np.array(msg["data"], dtype=np.int16),
-        n_chirps_per_frame,
-        samples_per_chirp,
-        n_receivers,
-    )
-
-    global iq_plot
-    # reshape if needed
-    iq = reshaped_frame.reshape(-1)  # Flatten the array
-
-    q.put(iq)  # Put the data in the queue
-
-
-def radar_thread(cfg, callback):
-    """
-    This function runs in a separate thread to handle the radar data.
-    It initializes the radar and starts receiving data.
-    """
-    radar = Radar(cfg, cb=callback)
-
-
-# Global IQPlot instance for access in callback
-iq_plot = None
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
-    parser.add_argument("--cfg", type=str, required=True, help="Path to the .lua file")
+    parser.add_argument("--data", type=str, required=True, help="Path to the .csv file")
 
     args = parser.parse_args()
 
@@ -76,20 +45,23 @@ if __name__ == "__main__":
     iq_plot.resize(600, 600)
     iq_plot.show()
 
-    # Initialize the radar
-    radar_thread_instance = threading.Thread(
-        target=radar_thread, args=(args.cfg, update_frame), daemon=True
-    )
-    radar_thread_instance.start()
-
-    # Use QTimer to periodically check the queue and update the plot
-    def process_queue():
-        if not q.empty():
-            iq_data = q.get()
-            iq_plot.update(iq_data)
-
-    timer = QTimer()
-    timer.timeout.connect(process_queue)
-    timer.start(10)  # Check the queue every 10 ms
-
     sys.exit(app.exec_())
+
+    # Open up the CSV
+    file_path = "data/radar_data_20250430_132508.csv"
+    df = pd.read_csv(file_path, chunksize=1)
+
+    for chunk in df:
+        data_json = json.loads(chunk["data"].iloc[0])
+
+        data = np.array(data_json, dtype=np.int16)
+
+        reshaped_frame = reshape_frame(
+            data,
+            n_chirps_per_frame,
+            samples_per_chirp,
+            n_receivers,
+        )
+
+        iq = reshaped_frame.reshape(-1)  # Flatten the array
+        iq_plot.update(iq)  # Update the plot with the flattened data
