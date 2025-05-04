@@ -5,6 +5,7 @@ import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
 import sys
 import pandas as pd
+import json
 
 
 class IQPlot(QtWidgets.QMainWindow):
@@ -45,11 +46,8 @@ if __name__ == "__main__":
     iq_plot.resize(600, 600)
     iq_plot.show()
 
-    sys.exit(app.exec_())
-
     # Open up the CSV
-    file_path = "data/radar_data_20250430_132508.csv"
-    df = pd.read_csv(file_path, chunksize=1)
+    df = pd.read_csv(args.data, chunksize=1)
 
     for chunk in df:
         data_json = json.loads(chunk["data"].iloc[0])
@@ -65,3 +63,4 @@ if __name__ == "__main__":
 
         iq = reshaped_frame.reshape(-1)  # Flatten the array
         iq_plot.update(iq)  # Update the plot with the flattened data
+        app.processEvents()

@@ -26,7 +26,7 @@ RAMP_END_TIME = 62 -- us
 ADC_START_TIME = 6 --us
 FREQ_SLOPE = 60.012 -- MHz/us
 ADC_SAMPLES = 128
-SAMPLE_RATE = 2500 -- ksps
+SAMPLE_RATE = 35000 -- ksps
 RX_GAIN = 30 -- dB
 
 -- ChirpConfig
@@ -36,10 +36,12 @@ RX_GAIN = 30 -- dB
 
 -- FrameConfig
 START_CHIRP_TX = 0
-END_CHIRP_TX = 0 -- 2 for 1843
+END_CHIRP_TX = 0 -- 2 for 1843 
 NUM_FRAMES = 0 -- Set this to 0 to continuously stream data
-CHIRP_LOOPS = 128 --    //32
-PERIODICITY = 70 -- ms  //30
+CHIRP_LOOPS = 255 -- 
+PERIODICITY = 100 -- ms
+
+-- CHIRP_LOOPS / PERIODICITY = CHIRPS_PER_SECOND i.e. the chirp sampling rate
 -----------------------------------------------------------
 
 -------- THIS IS FINE --------
