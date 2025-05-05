@@ -33,7 +33,7 @@ class IQPlot(QtWidgets.QMainWindow):
 
 n_receivers = 4
 samples_per_chirp = 128
-n_chirps_per_frame = 128
+n_chirps_per_frame = 255
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")

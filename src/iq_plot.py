@@ -23,4 +23,23 @@ class IQPlot(QtWidgets.QMainWindow):
         if iq_data.size == 0:
             return
         pos = np.column_stack((iq_data.real, iq_data.imag))
+        self.scatter.clear()
         self.scatter.setData(pos=pos)
+
+
+class VibrationIntensityPlot(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Vibration Intensity Plot")
+        self.plot_widget = pg.PlotWidget()
+        self.setCentralWidget(self.plot_widget)
+
+        self.plot_item = self.plot_widget.plot(pen=pg.mkPen(color=(255, 0, 0), width=2))
+        self.plot_widget.setLabel("bottom", "Time (s)")
+        self.plot_widget.setLabel("left", "Intensity")
+
+    def update(self, data: np.ndarray):
+        """Expects data to be a 1D numpy array."""
+        if data.size == 0:
+            return
+        self.plot_item.setData(data)

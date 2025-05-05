@@ -10,8 +10,6 @@ dependencies = [
     "numpy>=2.2.5",
     "opencv-python>=4.11.0.86",
     "pandas>=2.2.3",
-    "pyqt5==5.15.11",
-    "pyqt5-qt5==5.15.2",
     "pyqtgraph>=0.13.7",
     "pyserial>=3.5",
 ]
