@@ -169,10 +169,6 @@ if __name__ == "__main__":
     iq_plot_raw.resize(600, 600)
     iq_plot_raw.show()
 
-    vib_plot = VibrationIntensityPlot()
-    vib_plot.resize(600, 600)
-    vib_plot.show()
-
     # Read in the frames
     df = pd.read_csv(args.data, chunksize=1)
 
@@ -188,32 +184,16 @@ if __name__ == "__main__":
             n_receivers,
         )
 
-        # Remove random noise
-        processed = moving_average(
-            reshaped_frame, max_freq, config["chirp_sampling_rate"]
-        )
+        # # Remove random noise
+        # processed = moving_average(
+        #     reshaped_frame, max_freq, config["chirp_sampling_rate"]
+        # )
 
-        # Remove baseline drift
-        processed = baseline_drift_elimination(
-            processed, max_freq, config["chirp_sampling_rate"]
-        )
+        # # Remove baseline drift
+        # processed = baseline_drift_elimination(
+        #     processed, max_freq, config["chirp_sampling_rate"]
+        # )
 
-        intensities = []
-
-        for i in range(min_freq, max_freq):
-            # Calculate the vibration intensity
-            VI = calculate_vibration_intensity(
-                processed, i, config["chirp_sampling_rate"]
-            )
-
-            # Append the result to the list
-            intensities.append(VI)
-
-        # Convert the list to a numpy array
-        intensities = np.array(intensities)
-
-        vib_plot.update(intensities)
-        iq_plot.update(processed)
         iq_plot_raw.update(reshaped_frame)
 
         app.processEvents()

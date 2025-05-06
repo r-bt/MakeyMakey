@@ -34,12 +34,15 @@ class VibrationIntensityPlot(QtWidgets.QMainWindow):
         self.plot_widget = pg.PlotWidget()
         self.setCentralWidget(self.plot_widget)
 
-        self.plot_item = self.plot_widget.plot(pen=pg.mkPen(color=(255, 0, 0), width=2))
-        self.plot_widget.setLabel("bottom", "Time (s)")
+        self.line = pg.PlotDataItem(
+            pen=pg.mkPen(color=(0, 255, 255), width=2), symbol=None
+        )
+        self.plot_widget.addItem(self.line)
+        self.plot_widget.setAspectLocked(True)
+        self.plot_widget.setLabel("bottom", "Frequency (Hz)")
         self.plot_widget.setLabel("left", "Intensity")
 
-    def update(self, data: np.ndarray):
-        """Expects data to be a 1D numpy array."""
-        if data.size == 0:
+    def update(self, points: list[tuple[float, float]]):
+        if not points:
             return
-        self.plot_item.setData(data)
+        self.line.setData(*zip(*points))
