@@ -7,9 +7,12 @@ from PyQt5 import QtWidgets
 import sys
 import pandas as pd
 import json
+import matplotlib.pyplot as plt
+import time
+import concurrent.futures
 
-min_freq = 20  # Minimum frequency in Hz
-max_freq = 45  # Maximum frequency in Hz
+min_freq = 15  # Minimum frequency in Hz
+max_freq = 120  # Maximum frequency in Hz
 
 
 def moving_average(frame, freq, chirp_sample_rate):
@@ -26,27 +29,21 @@ def moving_average(frame, freq, chirp_sample_rate):
         chirp_sample_rate (float): The chirp sample rate in Hz.
     """
 
-    # Window should be number of sampling points associated with (period of frequency) / 2
     period = 1 / freq
-
-    # window_size = int(chirp_sample_rate * period / 2)
     window_size = int(chirp_sample_rate * period / 2)
 
-    # Create a moving average filter
+    if window_size < 1:
+        return frame  # Avoid empty kernel
+
     kernel = np.ones(window_size) / window_size
 
-    # Apply separately to real and imaginary parts
-    real_filtered = np.apply_along_axis(
-        lambda m: np.convolve(m.real, kernel, mode="same"), axis=0, arr=frame
-    )
-    imag_filtered = np.apply_along_axis(
-        lambda m: np.convolve(m.imag, kernel, mode="same"), axis=0, arr=frame
+    # Apply moving average directly to complex data
+    filtered = np.apply_along_axis(
+        lambda m: np.convolve(m, kernel, mode="same"), axis=0, arr=frame
     )
 
     pad = window_size // 2
-    trimmed = real_filtered[pad:-pad] + 1j * imag_filtered[pad:-pad]
-
-    return trimmed
+    return filtered[pad:-pad]
 
 
 def baseline_drift_elimination(frame, freq, chirp_sample_rate):
@@ -66,16 +63,13 @@ def baseline_drift_elimination(frame, freq, chirp_sample_rate):
 
     kernel = np.ones(window_size) / window_size
 
-    # Apply separately to real and imaginary parts
-    real_filtered = np.apply_along_axis(
-        lambda m: np.convolve(m.real, kernel, mode="same"), axis=0, arr=frame
-    )
-    imag_filtered = np.apply_along_axis(
-        lambda m: np.convolve(m.imag, kernel, mode="same"), axis=0, arr=frame
+    # Apply moving average directly to complex data
+    filtered = np.apply_along_axis(
+        lambda m: np.convolve(m, kernel, mode="same"), axis=0, arr=frame
     )
 
     # Subtract the filtered data from the original data
-    trimmed = frame - (real_filtered + 1j * imag_filtered)
+    trimmed = frame - filtered
 
     # Pad the data to match the original shape
     pad = window_size // 2
@@ -83,66 +77,32 @@ def baseline_drift_elimination(frame, freq, chirp_sample_rate):
     return trimmed
 
 
-def calculate_vibration_intensity(frame, freq, chirp_sample_rate):
-    """
-    Calculate the Vibration Intensity (VI) for the given FMCW radar frame.
+def vibration_intensity(frame, freq, chirp_sample_rate):
+    period = 1 / freq
+    chirps_in_period = int(chirp_sample_rate * period)
+    chirps_in_half_period = chirps_in_period // 2
 
-    Args:
-    - frame (np.ndarray): Input radar data with shape (n_chirps, samples_per_chirp, n_receivers).
-    - freq (float): The frequency we're interested in.
-    - chirp_sample_rate (float): Chirp sample rate (samples per second).
+    n_chirps, samples_per_chirp, n_receivers = frame.shape
 
-    Returns:
-    - np.ndarray: Vibration intensity for each frequency.
-    """
+    dfs = []
+    dns = []
 
-    period = 1 / freq  # Period of the frequency
-    n_chirps_in_period = int(chirp_sample_rate * period)  # Number of chirps in period
-    n_chirps_in_half_period = int(
-        chirp_sample_rate * (period / 2)
-    )  # Number of chirps in half period
+    for k in range(n_chirps - chirps_in_period):
+        dfs.append(
+            np.max(
+                np.abs(frame[k + chirps_in_half_period, :, :] - frame[k, :, :]), axis=0
+            )
+        )
 
-    n_chirps, n_samples, n_receivers = frame.shape
+        dns.append(
+            np.mean(np.abs(frame[k + chirps_in_period, :, :] - frame[k, :, :]), axis=0)
+        )
 
-    # Create result arrays to store D_f and D_n for each frequency
-    D_f_values = []
-    D_n_values = []
+    df = np.max(dfs, axis=0)
+    dn = np.mean(dns, axis=0)
 
-    # Iterate over each frequency (the 3rd dimension of the frame)
-    for r in range(n_receivers):
-        D_f_all = []
-        D_n_all = []
-
-        # Iterate over chirps in the valid range, from k0 to k0 + f_a
-        for k0 in range(n_chirps - n_chirps_in_period):
-            D_f_tmp = []
-            D_n_tmp = []
-
-            for k in range(k0, k0 + n_chirps_in_period):
-
-                if k + n_chirps_in_period >= n_chirps:
-                    break
-
-                D_f_tmp.append(
-                    np.abs(frame[k + n_chirps_in_half_period, :, r] - frame[k, :, r])
-                )
-
-                D_n_tmp.append(
-                    np.abs(frame[k + n_chirps_in_period, :, r] - frame[k0, :, r])
-                )
-
-            D_f_all.append(np.max(D_f_tmp, axis=0))
-            D_n_all.append(np.mean(D_n_tmp, axis=0))
-
-        print("D_f_all shape: ", np.array(D_f_all).shape)
-
-        D_f_values.append(np.mean(D_f_all, axis=0))
-        D_n_values.append(np.mean(D_n_all, axis=0))
-
-    # Calculate the Vibration Intensity (VI) for each frequency
-    VI = np.array(D_f_values) / np.array(D_n_values)
-
-    return VI
+    # Calculate the vibration intensity
+    return df / dn
 
 
 if __name__ == "__main__":
@@ -165,12 +125,18 @@ if __name__ == "__main__":
     iq_plot.resize(600, 600)
     iq_plot.show()
 
-    iq_plot_raw = IQPlot()
-    iq_plot_raw.resize(600, 600)
-    iq_plot_raw.show()
+    # iq_plot_raw = IQPlot()
+    # iq_plot_raw.resize(600, 600)
+    # iq_plot_raw.show()
+
+    vib_plot = VibrationIntensityPlot()
+    vib_plot.resize(600, 600)
+    vib_plot.show()
 
     # Read in the frames
     df = pd.read_csv(args.data, chunksize=1)
+
+    prev_frame = None
 
     for chunk in df:
         data_json = json.loads(chunk["data"].iloc[0])
@@ -184,24 +150,24 @@ if __name__ == "__main__":
             n_receivers,
         )
 
-        # # Remove random noise
-        # processed = moving_average(
-        #     reshaped_frame, max_freq, config["chirp_sampling_rate"]
-        # )
+        vibration_intensity_data = []
 
-        # # Remove baseline drift
-        # processed = baseline_drift_elimination(
-        #     processed, max_freq, config["chirp_sampling_rate"]
-        # )
+        def process_frequency(i):
+            # Remove random noise
+            processed = moving_average(reshaped_frame, i, config["chirp_sampling_rate"])
 
-        iq_plot_raw.update(reshaped_frame)
+            # Calculate the vibration intensity
+            vib = vibration_intensity(processed, i, config["chirp_sampling_rate"])
+            return i, vib[0]
 
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            vibration_intensity_data = list(
+                executor.map(
+                    lambda i: process_frequency(i),
+                    range(min_freq, max_freq),
+                )
+            )
+
+        vib_plot.update(vibration_intensity_data)
+        iq_plot.update(reshaped_frame[:, :, 0].reshape(-1))
         app.processEvents()
-
-    # # Apply moving average to the data
-    # chirp_sample_rate = config["chirp_sampling_rate"]
-    # moving_avg_frames = [
-    #     moving_average(frame, max_freq, chirp_sample_rate) for frame in frames
-    # ]
-
-    # print("Shape of moving average frames: ", np.array(moving_avg_frames).shape)

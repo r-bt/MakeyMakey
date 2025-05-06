@@ -1,12 +1,45 @@
 import argparse
-from src.radar import Radar
 import cv2
 import numpy as np
+from src.xwr.radar_config import RadarConfig
+from src.dsp import reshape_frame
+import pandas as pd
+import json
 
-n_receivers = 4
-samples_per_chirp = 128
-n_chirps_per_frame = 128
-n_tdm = 1
+
+def random_noise_elimination(frame, freq, chirp_sample_rate):
+    """
+    Remove the random noise from the data.
+
+    From HomeOSD: The random noise can be removed by using the moving average of a window with the length of the period
+    of frequency / 2.
+
+    Args:
+        frame (np.ndarray): The input fft array (n_chirps_per_frame, samples_per_chirp, n_receivers).
+        freq (float): The frequency we're interested in.
+        chirp_sample_rate (float): The chirp sample rate in Hz.
+    """
+    # Window should be number of sampling points associated with (period of frequency) / 2
+    period = 1 / freq
+
+    # window_size = int(chirp_sample_rate * period / 2)
+    window_size = int(chirp_sample_rate * period / 2)
+
+    # Create a moving average filter
+    kernel = np.ones(window_size) / window_size
+
+    # Apply separately to real and imaginary parts
+    real_filtered = np.apply_along_axis(
+        lambda m: np.convolve(m.real, kernel, mode="same"), axis=0, arr=frame
+    )
+    imag_filtered = np.apply_along_axis(
+        lambda m: np.convolve(m.imag, kernel, mode="same"), axis=0, arr=frame
+    )
+
+    # pad = window_size // 2
+    # trimmed = real_filtered[pad:-pad] + 1j * imag_filtered[pad:-pad]
+
+    return real_filtered + 1j * imag_filtered
 
 
 def normalize_and_color(data, max_val=0, cmap=None):
@@ -32,54 +65,53 @@ def fft_processs(adc_samples):
     return fft_mag
 
 
-def reshape_frame(msg, n_chirps_per_frame, samples_per_chirp, n_receivers):
-    data = np.array(msg['data'], dtype=np.int16)
-
-    data = data.reshape(-1, 8)  # Assuming we have 4 antennas
-
-    data = data[:, :4] + 1j * data[:, 4:]
-
-    data = data.reshape(n_chirps_per_frame, samples_per_chirp, n_receivers)
-
-    # deinterleve if theres TDM
-    if n_tdm > 1:  # TODO: Pretty sure we're not using TDM
-        data_i = [data[i::n_tdm, :, :] for i in range(n_tdm)]
-        data = np.concatenate(data_i, axis=-1)
-
-    return data
-
 prev_frame = None
-
-def update_frame(data):
-    global prev_frame
-    reshaped_frame = reshape_frame(
-        data, n_chirps_per_frame, samples_per_chirp, n_receivers
-    )
-
-    raw_frame = reshaped_frame
-
-    reshaped_frame = reshaped_frame if prev_frame is None else reshaped_frame - prev_frame
-
-    prev_frame = raw_frame
-
-    # Process the data
-    fft_data = fft_processs(reshaped_frame)
-
-    # Normalize and color the data
-    img = normalize_and_color(fft_data, max_val=0, cmap=cv2.COLORMAP_JET)
-
-    img = cv2.resize(img, (800, 600))
-
-    # Display the image
-    cv2.imshow("FFT Data", img)
-    cv2.waitKey(1)  # Allow OpenCV to process the window events
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
+    parser.add_argument("--data", type=str, required=True, help="Path to the .csv file")
     parser.add_argument("--cfg", type=str, required=True, help="Path to the .lua file")
 
     args = parser.parse_args()
 
-    # Initialize the radar
-    radar = Radar(args.cfg, cb=update_frame)
+    # Initalize the radar config
+    config = RadarConfig(args.cfg).get_params()
+
+    n_chirps_per_frame = config["n_chirps"]
+    n_receivers = config["n_rx"]
+    samples_per_chirp = config["n_samples"]
+
+    # Read in the frames
+    df = pd.read_csv(args.data, chunksize=1)
+
+    for chunk in df:
+        data_json = json.loads(chunk["data"].iloc[0])
+
+        data = np.array(data_json, dtype=np.int16)
+
+        # Reshape the data into a 3D array (n_chirps_per_frame, samples_per_chirp, n_receivers) of IQ samples
+        reshaped_frame = reshape_frame(
+            data,
+            n_chirps_per_frame,
+            samples_per_chirp,
+            n_receivers,
+        )
+
+        processed_frame = (
+            reshaped_frame if prev_frame is None else reshaped_frame - prev_frame
+        )
+
+        processed_frame = random_noise_elimination(
+            processed_frame, freq=40, chirp_sample_rate=config["chirp_sampling_rate"]
+        )
+
+        fft_data = fft_processs(processed_frame)
+
+        # Normalize and color the data
+        img = normalize_and_color(fft_data, max_val=0, cmap=cv2.COLORMAP_JET)
+
+        img = cv2.resize(img, (800, 600))
+
+        # Display the image
+        cv2.imshow("FFT Data", img)
+        cv2.waitKey(1)  # Allow OpenCV to process the window events

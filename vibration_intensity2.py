@@ -8,44 +8,40 @@ from PyQt5 import QtWidgets
 from src.iq_plot import IQPlot, VibrationIntensityPlot
 import sys
 import time
+import concurrent.futures
 
-MIN_FREQ = 20  # Minimum frequency in Hz
-MAX_FREQ = 45  # Maximum frequency in Hz
+MIN_FREQ = 60  # Minimum frequency in Hz
+MAX_FREQ = 120  # Maximum frequency in Hz
 
 
 def random_noise_elimination(frame, freq, chirp_sample_rate):
     """
-    Remove the random noise from the data.
+    Compute the moving average of the data across frames
 
-    From HomeOSD: The random noise can be removed by using the moving average of a window with the length of the period
-    of frequency / 2.
+    Used to remove random noise from the data.
+
+    From the HomeOSD paper, we want the window size to be the number of sampling points associated with the period of frequency / 2.
 
     Args:
-        frame (np.ndarray): The input fft array (n_chirps_per_frame, samples_per_chirp, n_receivers).
+        frame (np.ndarray): The input data array (n_chirps_per_frame, samples_per_chirp, n_receivers).
         freq (float): The frequency we're interested in.
         chirp_sample_rate (float): The chirp sample rate in Hz.
     """
-    # Window should be number of sampling points associated with (period of frequency) / 2
     period = 1 / freq
-
-    # window_size = int(chirp_sample_rate * period / 2)
     window_size = int(chirp_sample_rate * period / 2)
 
-    # Create a moving average filter
+    if window_size < 1:
+        return frame  # Avoid empty kernel
+
     kernel = np.ones(window_size) / window_size
 
-    # Apply separately to real and imaginary parts
-    real_filtered = np.apply_along_axis(
-        lambda m: np.convolve(m.real, kernel, mode="same"), axis=0, arr=frame
-    )
-    imag_filtered = np.apply_along_axis(
-        lambda m: np.convolve(m.imag, kernel, mode="same"), axis=0, arr=frame
+    # Apply moving average directly to complex data
+    filtered = np.apply_along_axis(
+        lambda m: np.convolve(m, kernel, mode="same"), axis=0, arr=frame
     )
 
-    # pad = window_size // 2
-    # trimmed = real_filtered[pad:-pad] + 1j * imag_filtered[pad:-pad]
-
-    return real_filtered + 1j * imag_filtered
+    pad = window_size // 2
+    return filtered[pad:-pad]
 
 
 def remove_baseline_drift(frame, freq, chirp_sample_rate):
@@ -93,29 +89,26 @@ def vibration_intensity(frame, freq, chirp_sample_rate):
     chirps_in_half_period = chirps_in_period // 2
 
     n_chirps, samples_per_chirp, n_receivers = frame.shape
-    max_k0 = n_chirps - chirps_in_period * 2  # ensures k + chirps_in_period < n_chirps
 
-    if max_k0 <= 0:
-        return np.zeros(n_receivers)
+    dfs = []
+    dns = []
 
-    vi = np.zeros(n_receivers)
+    for k in range(n_chirps - chirps_in_period):
+        dfs.append(
+            np.max(
+                np.abs(frame[k + chirps_in_half_period, :, :] - frame[k, :, :]), axis=0
+            )
+        )
 
-    for i in range(n_receivers):
-        k0 = np.arange(max_k0)[:, None]  # (n_windows, 1)
-        k = k0 + np.arange(chirps_in_period)  # (n_windows, chirps_in_period)
-        k_half = k + chirps_in_half_period
-        k_full = k + chirps_in_period
+        dns.append(
+            np.mean(np.abs(frame[k + chirps_in_period, :, :] - frame[k, :, :]), axis=0)
+        )
 
-        ref = frame[k, :, i]  # (n_windows, chirps_in_period, samples)
-        half = frame[k_half, :, i]
-        full = frame[k_full, :, i]
+    df = np.mean(dfs, axis=0)
+    dn = np.mean(dns, axis=0)
 
-        df = np.max(np.abs(half - ref), axis=2)  # (n_windows, chirps_in_period)
-        dn = np.mean(np.abs(full - ref), axis=2)
-
-        vi[i] = np.max(df) / np.mean(dn)
-
-    return vi
+    # Calculate the vibration intensity
+    return df / dn
 
 
 if __name__ == "__main__":
@@ -158,35 +151,41 @@ if __name__ == "__main__":
             n_receivers,
         )
 
-        # Apply an FFT to the frame across the samples
-        fft_data = np.fft.fft(reshaped_frame, axis=1)
-        fft_data = np.fft.fftshift(fft_data, axes=1)
+        # # Apply an FFT to the frame across the samples
+        # fft_data = np.fft.fft(reshaped_frame, axis=1)
+        # fft_data = np.fft.fftshift(fft_data, axes=1)
 
         vibration_intensity_data = []
 
         freqs = np.array(range(MIN_FREQ, MAX_FREQ))
 
-        # for i in freqs:
-        # Remove the random noise
-        processed_fft_data = random_noise_elimination(
-            fft_data, MAX_FREQ, config["chirp_sampling_rate"]
-        )
+        def process_frequency(i):
+            # Remove random noise
+            processed = random_noise_elimination(
+                reshaped_frame, i, config["chirp_sampling_rate"]
+            )
 
-        # # Remove the baseline drift
-        # processed_fft_data = remove_baseline_drift(
-        #     processed_fft_data, i, config["chirp_sampling_rate"]
-        # )
+            # Apply an FFT to the frame across the samples
+            fft_data = np.fft.fft(processed, axis=1)
+            fft_data = np.fft.fftshift(fft_data, axes=1)
 
-        # # Calculate the vibration intensity
-        # vib_intensity = vibration_intensity(
-        #     processed_fft_data, i, config["chirp_sampling_rate"]
-        # )
+            # Calculate the vibration intensity
+            vib = vibration_intensity(fft_data, i, config["chirp_sampling_rate"])
+            return i, vib[0]
 
-        # vibration_intensity_data.append((i, vib_intensity[0]))
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            vibration_intensity_data = list(
+                executor.map(
+                    lambda i: process_frequency(i),
+                    range(MIN_FREQ, MAX_FREQ),
+                )
+            )
+
+        vib_plot.update(vibration_intensity_data)
 
         # vib_plot.update(vibration_intensity_data)
-        real_samples = processed_fft_data.real.flatten()
-        imag_samples = processed_fft_data.imag.flatten()
+        real_samples = reshaped_frame[:, :, 0].real.flatten()
+        imag_samples = reshaped_frame[:, :, 0].imag.flatten()
 
         # Update the GUI with the new data
         data = np.column_stack((real_samples, imag_samples))
