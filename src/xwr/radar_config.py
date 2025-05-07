@@ -120,6 +120,9 @@ class RadarConfig(OrderedDict):
         # Calculate the sample rate
         sample_rate = self["SAMPLE_RATE"] * 1e3  # ksps to sps
 
+        # Calculate the sweep time
+        t_sweep = self["ADC_SAMPLES"] / sample_rate  # in seconds
+
         # Calculate the chirp sampling rate
         chrip_sampling_rate = chirp_loops * (1 / (frame_time * 1e-3))  # Hz
 
@@ -153,6 +156,7 @@ class RadarConfig(OrderedDict):
                 ("velocity_res", velocity_res),
                 ("range_max", range_max),
                 ("range_res", range_res),
+                ("t_sweep", t_sweep),
             ]
         )
 

@@ -5,13 +5,13 @@ import pandas as pd
 import json
 from src.dsp import reshape_frame
 from PyQt5 import QtWidgets
-from src.iq_plot import IQPlot, VibrationIntensityPlot
+from src.iq_plot import IQPlot, VibrationIntensityPlot, VibrationIntensityHeatmap
 import sys
 import time
 import concurrent.futures
 
-MIN_FREQ = 60  # Minimum frequency in Hz
-MAX_FREQ = 120  # Maximum frequency in Hz
+MIN_FREQ = 80  # Minimum frequency in Hz
+MAX_FREQ = 110  # Maximum frequency in Hz
 
 
 def random_noise_elimination(frame, freq, chirp_sample_rate):
@@ -73,41 +73,51 @@ def remove_baseline_drift(frame, freq, chirp_sample_rate):
         lambda m: np.convolve(m.imag, kernel, mode="same"), axis=0, arr=frame
     )
 
-    # Subtract the filtered data from the original data
-    trimmed = frame - (real_filtered + 1j * imag_filtered)
-
-    # Pad the trimmed data to remove the edges
-    # pad = window_size // 2
-    # trimmed = real_filtered[pad:-pad] + 1j * imag_filtered[pad:-pad]
-
     return frame - (real_filtered + 1j * imag_filtered)
 
 
 def vibration_intensity(frame, freq, chirp_sample_rate):
+    """
+    Computes the vibration intensity of the data.
+
+    Args:
+        frame (np.ndarray): The input fft data array (n_chirps_per_frame, n_freq_bins, n_receivers).
+        freq (float): The frequency we're interested in.
+        chirp_sample_rate (float): The chirp sample rate in Hz.
+
+    Returns:
+        np.ndarray: The vibration intensity of the data (n_freq_bins, n_receivers).
+    """
     period = 1 / freq
     chirps_in_period = int(chirp_sample_rate * period)
     chirps_in_half_period = chirps_in_period // 2
 
-    n_chirps, samples_per_chirp, n_receivers = frame.shape
+    n_chirps = frame.shape[0]
+    max_k0 = n_chirps - chirps_in_period
 
-    dfs = []
-    dns = []
+    # Precompute index arrays once
+    offset = np.arange(chirps_in_period)
+    k0 = np.arange(max_k0)
+    k = k0[:, None] + offset
+    k_half = k + chirps_in_half_period
+    k_full = k + chirps_in_period
 
-    for k in range(n_chirps - chirps_in_period):
-        dfs.append(
-            np.max(
-                np.abs(frame[k + chirps_in_half_period, :, :] - frame[k, :, :]), axis=0
-            )
-        )
+    # Filter valid indices
+    valid_mask = (k_full < n_chirps).all(axis=1)
+    k, k_half, k_full = k[valid_mask], k_half[valid_mask], k_full[valid_mask]
 
-        dns.append(
-            np.mean(np.abs(frame[k + chirps_in_period, :, :] - frame[k, :, :]), axis=0)
-        )
+    # Reshape once for efficient fancy indexing
+    f_k = frame[k]  # shape: (valid_k, chirps_in_period, freq_bins, receivers)
+    f_k_half = frame[k_half]
+    f_k_full = frame[k_full]
 
-    df = np.mean(dfs, axis=0)
-    dn = np.mean(dns, axis=0)
+    # Compute differences in-place
+    df_all = np.abs(f_k_half - f_k)
+    dn_all = np.abs(f_k_full - f_k)
 
-    # Calculate the vibration intensity
+    df = np.mean(np.max(df_all, axis=1), axis=0)
+    dn = np.mean(np.mean(dn_all, axis=1), axis=0)
+
     return df / dn
 
 
@@ -131,33 +141,28 @@ if __name__ == "__main__":
     iq_plot.resize(600, 600)
     iq_plot.show()
 
-    vib_plot = VibrationIntensityPlot()
+    vib_plot = VibrationIntensityHeatmap(
+        start_freq=MIN_FREQ, range_res=config["range_res"]
+    )
     vib_plot.resize(600, 600)
     vib_plot.show()
 
     # Read in the frames
-    df = pd.read_csv(args.data, chunksize=1)
+    df = pd.read_csv(args.data)
 
-    for chunk in df:
-        data_json = json.loads(chunk["data"].iloc[0])
+    frames = np.array([json.loads(row) for row in df["data"]], dtype=np.int16)
 
-        data = np.array(data_json, dtype=np.int16)
+    for frame in frames:
+        start_time = time.time()
 
-        # Reshape the data into a 3D array (n_chirps_per_frame, samples_per_chirp, n_receivers) of IQ samples
         reshaped_frame = reshape_frame(
-            data,
+            frame,
             n_chirps_per_frame,
             samples_per_chirp,
             n_receivers,
         )
 
-        # # Apply an FFT to the frame across the samples
-        # fft_data = np.fft.fft(reshaped_frame, axis=1)
-        # fft_data = np.fft.fftshift(fft_data, axes=1)
-
         vibration_intensity_data = []
-
-        freqs = np.array(range(MIN_FREQ, MAX_FREQ))
 
         def process_frequency(i):
             # Remove random noise
@@ -171,25 +176,28 @@ if __name__ == "__main__":
 
             # Calculate the vibration intensity
             vib = vibration_intensity(fft_data, i, config["chirp_sampling_rate"])
-            return i, vib[0]
+            return vib[:, 0]
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        t = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             vibration_intensity_data = list(
                 executor.map(
                     lambda i: process_frequency(i),
                     range(MIN_FREQ, MAX_FREQ),
                 )
             )
+        print("Time taken for vibration intensity: ", time.time() - t)
 
-        vib_plot.update(vibration_intensity_data)
+        vib_plot.update(np.array(vibration_intensity_data))
 
-        # vib_plot.update(vibration_intensity_data)
         real_samples = reshaped_frame[:, :, 0].real.flatten()
         imag_samples = reshaped_frame[:, :, 0].imag.flatten()
 
         # Update the GUI with the new data
         data = np.column_stack((real_samples, imag_samples))
 
+        t = time.time()
         iq_plot.update(data)
 
         app.processEvents()
+        print("Time taken: ", time.time() - start_time)

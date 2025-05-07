@@ -49,10 +49,11 @@ class VibrationIntensityPlot(QtWidgets.QMainWindow):
 
 
 class VibrationIntensityHeatmap(QtWidgets.QMainWindow):
-    def __init__(self, start_freq: float):
+    def __init__(self, start_freq: float, range_res: float):
         super().__init__()
 
         self.start_freq = start_freq
+        self.range_res = range_res
 
         self.setWindowTitle("Vibration Intensity Heatmap")
 
@@ -74,11 +75,17 @@ class VibrationIntensityHeatmap(QtWidgets.QMainWindow):
         if data.ndim != 2:
             raise ValueError("Expected 2D array (n_bins, n_freqs)")
 
-        n_freqs, n_time_bins = data.shape
+        n_freqs, n_freq_bins = data.shape
 
         self.plot_widget.setXRange(self.start_freq, self.start_freq + n_freqs)
+        self.plot_widget.setYRange(0, n_freq_bins * self.range_res)
 
         self.img_item.setImage(data, levels=(0, 4))
 
-        image_rect = QtCore.QRectF(self.start_freq, 0, n_freqs, n_time_bins)
+        image_rect = QtCore.QRectF(
+            self.start_freq,
+            0,
+            n_freqs,
+            n_freq_bins * self.range_res,
+        )
         self.img_item.setRect(image_rect)
