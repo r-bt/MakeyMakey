@@ -10,8 +10,8 @@ import sys
 import time
 import concurrent.futures
 
-MIN_FREQ = 80  # Minimum frequency in Hz
-MAX_FREQ = 110  # Maximum frequency in Hz
+MIN_FREQ = 25  # Minimum frequency in Hz
+MAX_FREQ = 80  # Maximum frequency in Hz
 
 
 def random_noise_elimination(frame, freq, chirp_sample_rate):
@@ -121,6 +121,74 @@ def vibration_intensity(frame, freq, chirp_sample_rate):
     return df / dn
 
 
+def estimate_object_distances(vib_data, vib_threshold, dist_threshold, range_res):
+    """
+    Estimate the distances of objects based on the vibration intensity data.
+
+    Args:
+        vib_data (np.ndarray): The vibration intensity data (n_freqs, n_distances)
+        vib_threshold (float): The threshold for vibration intensity.
+        dist_threshold (float): The threshold for distance estimation.
+        range_res (float): The range resolution of the radar.
+
+    Returns:
+        objects (np.ndarray): Minimum and maximum distances of objects in class
+    """
+    # Find the indices where the vibration intensity exceeds the threshold
+    indices = np.where(vib_data > vib_threshold)
+
+    locs = zip(indices[0], indices[1])
+
+    # Cluster the locs based on their distances to each other
+    clusters = []
+
+    for loc in locs:
+        found = False
+        for cluster in clusters:
+            loc_dist = loc[1] * range_res
+            cluster_dist = cluster[0][1] * range_res
+
+            if loc_dist - cluster_dist < dist_threshold:
+                cluster.append(loc)
+                found = True
+                break
+
+        if not found:
+            clusters.append([loc])
+
+    objects = []
+    for cluster in clusters:
+        min_dist = min([loc[1] for loc in cluster])
+        max_dist = max([loc[1] for loc in cluster])
+        objects.append((min_dist, max_dist))
+
+    return objects
+
+
+def feature_extraction(vib_data, obj, k=5):
+    """
+    Returns top k freqs and VI values for a given object inside a distance range
+
+    Args:
+        vib_data (np.ndarray): The vibration intensity data (n_freqs, n_distances)
+        object (tuple): The object to extract features from (min_dist, max_dist).
+    """
+
+    min_dist, max_dist = obj
+
+    # Get the indices of the distances that are inside the range
+    data = vib_data[:, min_dist:max_dist]
+
+    # Get max values at each freq
+    max_values = np.max(data, axis=1)
+
+    # Get the indices of the top k values
+    top_k_indices = np.argsort(max_values)[-k:]
+    top_k_values = max_values[top_k_indices]
+
+    return zip(top_k_indices, top_k_values)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
     parser.add_argument("--data", type=str, required=True, help="Path to the .csv file")
@@ -148,9 +216,11 @@ if __name__ == "__main__":
     vib_plot.show()
 
     # Read in the frames
-    df = pd.read_csv(args.data)
+    df = pd.read_csv(args.data, skiprows=range(1, 200))
 
     frames = np.array([json.loads(row) for row in df["data"]], dtype=np.int16)
+
+    res = []
 
     for frame in frames:
         start_time = time.time()
@@ -174,9 +244,12 @@ if __name__ == "__main__":
             fft_data = np.fft.fft(processed, axis=1)
             fft_data = np.fft.fftshift(fft_data, axes=1)
 
+            # We only care about close objects for testing (helps with speed)
+            fft_data = fft_data[:, : samples_per_chirp // 4, :]
+
             # Calculate the vibration intensity
             vib = vibration_intensity(fft_data, i, config["chirp_sampling_rate"])
-            return vib[:, 0]
+            return np.max(vib, axis=1)
 
         t = time.time()
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
@@ -186,18 +259,42 @@ if __name__ == "__main__":
                     range(MIN_FREQ, MAX_FREQ),
                 )
             )
-        print("Time taken for vibration intensity: ", time.time() - t)
 
-        vib_plot.update(np.array(vibration_intensity_data))
+        vib_data = np.array(vibration_intensity_data)
 
-        real_samples = reshaped_frame[:, :, 0].real.flatten()
-        imag_samples = reshaped_frame[:, :, 0].imag.flatten()
+        objects = estimate_object_distances(
+            vib_data, vib_threshold=3, dist_threshold=0.5, range_res=config["range_res"]
+        )
 
-        # Update the GUI with the new data
-        data = np.column_stack((real_samples, imag_samples))
+        found = False
 
-        t = time.time()
-        iq_plot.update(data)
+        for obj in objects:
+            if obj[0] * config["range_res"] > 0 and obj[1] * config["range_res"] < 2:
+                res.append(0)
+                found = True
+                break
+
+        if not found:
+            res.append(1)
+
+        # features = [list(feature_extraction(vib_data, obj)) for obj in objects]
+
+        # for fe
+
+        # print(features)
+
+        # vib_plot.update(vib_data)
+
+        # real_samples = reshaped_frame[:, :, 0].real.flatten()
+        # imag_samples = reshaped_frame[:, :, 0].imag.flatten()
+
+        # # Update the GUI with the new data
+        # data = np.column_stack((real_samples, imag_samples))
+
+        # t = time.time()
+        # iq_plot.update(data)
 
         app.processEvents()
-        print("Time taken: ", time.time() - start_time)
+
+    accuracy = sum(res) / len(res)
+    print(f"Accuracy: {accuracy:.2f}")

@@ -12,4 +12,5 @@ dependencies = [
     "pandas>=2.2.3",
     "pyqtgraph>=0.13.7",
     "pyserial>=3.5",
+    "scikit-learn>=1.6.1",
 ]
