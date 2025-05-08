@@ -1,12 +1,14 @@
+# new imports
+import dash
+from dash import dcc, html
+import plotly.graph_objs as go
+import threading
 import argparse
-from datetime import datetime
-import json
-import numpy as np
-import matplotlib.pyplot as plt
 from src.radar import Radar
+import numpy as np
 from src.xwr.radar_config import RadarConfig
-import cv2
 
+fft_data = {"x": [], "y": []}
 config = None
 
 
@@ -16,50 +18,59 @@ def update_frame(msg):
         return
 
     range_res = config["range_res"]
-
-    # Average across all chirps
     avg_chirps = np.mean(frame, axis=0)
-
-    # Take the first receiver
     signal = avg_chirps[:, 0]
 
-    # Take the FFT
-    fft_result = np.fft.fft(signal)
-    fft_result = np.fft.fftshift(fft_result)
+    fft_result = np.fft.fftshift(np.fft.fft(signal))
     fft_magnitude = np.abs(fft_result)
-
-    # Get the distances
     dists = np.arange(fft_magnitude.shape[0]) * range_res
 
-    # Normalize and visualize
-    mag_norm = np.clip(fft_magnitude / np.max(fft_magnitude), 0, 1)
-    img = (mag_norm * 255).astype(np.uint8)
-    img = np.expand_dims(img, axis=0)
-    img_color = cv2.applyColorMap(img, cv2.COLORMAP_INFERNO)
-    img_color = cv2.resize(img_color, (1200, 800))
+    fft_data["x"] = dists.tolist()
+    fft_data["y"] = fft_magnitude.tolist()
 
-    cv2.imshow("Range FFT - RX0 (0-2m)", img_color)
-    cv2.waitKey(1)
+
+def run_dash():
+    app = dash.Dash(__name__)
+    app.layout = html.Div(
+        [
+            dcc.Graph(id="live-fft"),
+            dcc.Interval(id="interval", interval=500, n_intervals=0),
+        ]
+    )
+
+    @app.callback(
+        dash.Output("live-fft", "figure"), [dash.Input("interval", "n_intervals")]
+    )
+    def update_fft(n):
+        return go.Figure(
+            data=[go.Scatter(x=fft_data["x"], y=fft_data["y"], mode="lines")],
+            layout=go.Layout(
+                title="Live FFT Magnitude",
+                xaxis_title="Distance (m)",
+                yaxis_title="Magnitude",
+            ),
+        )
+
+    app.run_server(debug=False, use_reloader=False)
 
 
 def main():
     global config
-    parser = argparse.ArgumentParser(description="Record data from the DCA1000")
-
-    parser.add_argument(
-        "--cfg",
-        type=str,
-        required=True,
-        help="Path to the .lua file used in mmWaveStudio",
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cfg", type=str, required=True)
     args = parser.parse_args()
+
+    # Start the dash server in a thread so it doesn't block
+    threading.Thread(target=run_dash, daemon=True).start()
 
     # Initalize the radar config
     config = RadarConfig(args.cfg).get_params()
-
-    # Initialize the radar
     radar = Radar(args.cfg, cb=update_frame)
 
-if __name__ == '__main__':
+    # Keep the radar app running
+    while True:
+        pass
+
+
+if __name__ == "__main__":
     main()
