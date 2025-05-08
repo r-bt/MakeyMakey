@@ -234,10 +234,12 @@ if __name__ == "__main__":
 
         vibration_intensity_data = []
 
+        print(1 / config["t_sweep"])
+
         def process_frequency(i):
             # Remove random noise
             processed = random_noise_elimination(
-                reshaped_frame, i, config["chirp_sampling_rate"]
+                reshaped_frame, i, 1 / config["t_sweep"]
             )
 
             # Apply an FFT to the frame across the samples
@@ -248,7 +250,7 @@ if __name__ == "__main__":
             fft_data = fft_data[:, : samples_per_chirp // 4, :]
 
             # Calculate the vibration intensity
-            vib = vibration_intensity(fft_data, i, config["chirp_sampling_rate"])
+            vib = vibration_intensity(fft_data, i, 1 / config["t_sweep"])
             return np.max(vib, axis=1)
 
         t = time.time()

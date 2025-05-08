@@ -1,8 +1,11 @@
 from datetime import datetime
 from src.xwr.dcapub import DCAPub
+from src.xwr.radar_config import RadarConfig
+from src.dsp import reshape_frame
 import argparse
 
-class Radar():
+
+class Radar:
 
     def __init__(self, cfg_path: str, cb=None):
         """
@@ -18,14 +21,23 @@ class Radar():
 
         print("DCA1000 conected!")
 
+        self.config = RadarConfig(cfg_path).get_params()
+
         try:
             while True:
                 frame_data, new_frame = self.radar.update_frame_buffer()
-                
+
                 if new_frame:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    msg = {'data': frame_data, 'timestamp': timestamp}
+                    frame_data = reshape_frame(
+                        frame_data,
+                        self.config["n_chirps"],
+                        self.config["n_samples"],
+                        self.config["n_rx"],
+                    )
+
+                    msg = {"data": frame_data, "timestamp": timestamp}
 
                     if cb:
                         cb(msg)
@@ -33,10 +45,14 @@ class Radar():
         except KeyboardInterrupt:
             print("Stopping radar...")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
     parser.add_argument(
-        "--cfg", type=str, required=True, help="Path to the .lua file used in mmWaveStudio"
+        "--cfg",
+        type=str,
+        required=True,
+        help="Path to the .lua file used in mmWaveStudio",
     )
 
     args = parser.parse_args()

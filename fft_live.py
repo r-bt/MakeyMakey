@@ -1,85 +1,62 @@
 import argparse
-from src.radar import Radar
-import cv2
+from datetime import datetime
+import json
 import numpy as np
+import matplotlib.pyplot as plt
+from src.radar import Radar
+from src.xwr.radar_config import RadarConfig
+import cv2
 
-n_receivers = 4
-samples_per_chirp = 128
-n_chirps_per_frame = 128
-n_tdm = 1
-
-
-def normalize_and_color(data, max_val=0, cmap=None):
-    if max_val <= 0:
-        max_val = np.max(data)
-
-    img = (data / max_val * 255).astype(np.uint8)
-    if cmap:
-        img = cv2.applyColorMap(img, cmap)
-    return img
+config = None
 
 
-def fft_processs(adc_samples):
-    fft_range = np.fft.fft(adc_samples, axis=1)
-    fft_range_doppler = np.fft.fft(fft_range, axis=0)
-    fft_range_azi = np.fft.fft(fft_range_doppler, axis=2)
+def update_frame(msg):
+    frame = msg.get("data", None)
+    if frame is None or config is None:
+        return
 
-    # fft_mag = np.log(np.abs(fft_range_azi_cd))
-    # return fft_range_azi
-    # fft_range_azi_cd = np.sum(fft_range_azi, 0)
+    range_res = config["range_res"]
 
-    fft_mag = np.fft.fftshift(np.log(np.abs(fft_range_doppler[:, :, 0])), axes=0)
-    return fft_mag
+    # Average across all chirps
+    avg_chirps = np.mean(frame, axis=0)
+
+    # Take the first receiver
+    signal = avg_chirps[:, 0]
+
+    # Take the FFT
+    fft_result = np.fft(signal)
+    fft_result = np.fft.fftshift(fft_result)
+    fft_magnitude = np.abs(fft_result)
+
+    # Get the distances
+    dists = np.arange(fft_magnitude.shape[0]) * range_res
+
+    # Normalize and visualize
+    mag_norm = np.clip(fft_magnitude / np.max(fft_magnitude), 0, 1)
+    img = (mag_norm * 255).astype(np.uint8)
+    img = np.expand_dims(img, axis=0)
+    img_color = cv2.applyColorMap(img, cv2.COLORMAP_INFERNO)
+    img_color = cv2.resize(img_color, (1200, 800))
+
+    cv2.imshow("Range FFT - RX0 (0-2m)", img_color)
+    cv2.waitKey(1)
 
 
-def reshape_frame(msg, n_chirps_per_frame, samples_per_chirp, n_receivers):
-    data = np.array(msg['data'], dtype=np.int16)
+def main():
+    global config
+    parser = argparse.ArgumentParser(description="Record data from the DCA1000")
 
-    data = data.reshape(-1, 8)  # Assuming we have 4 antennas
-
-    data = data[:, :4] + 1j * data[:, 4:]
-
-    data = data.reshape(n_chirps_per_frame, samples_per_chirp, n_receivers)
-
-    # deinterleve if theres TDM
-    if n_tdm > 1:  # TODO: Pretty sure we're not using TDM
-        data_i = [data[i::n_tdm, :, :] for i in range(n_tdm)]
-        data = np.concatenate(data_i, axis=-1)
-
-    return data
-
-prev_frame = None
-
-def update_frame(data):
-    global prev_frame
-    reshaped_frame = reshape_frame(
-        data, n_chirps_per_frame, samples_per_chirp, n_receivers
+    parser.add_argument(
+        "--cfg",
+        type=str,
+        required=True,
+        help="Path to the .lua file used in mmWaveStudio",
     )
 
-    raw_frame = reshaped_frame
-
-    reshaped_frame = reshaped_frame if prev_frame is None else reshaped_frame - prev_frame
-
-    prev_frame = raw_frame
-
-    # Process the data
-    fft_data = fft_processs(reshaped_frame)
-
-    # Normalize and color the data
-    img = normalize_and_color(fft_data, max_val=0, cmap=cv2.COLORMAP_JET)
-
-    img = cv2.resize(img, (800, 600))
-
-    # Display the image
-    cv2.imshow("FFT Data", img)
-    cv2.waitKey(1)  # Allow OpenCV to process the window events
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Record data from the DCA1000")
-    parser.add_argument("--cfg", type=str, required=True, help="Path to the .lua file")
-
     args = parser.parse_args()
+
+    # Initalize the radar config
+    config = RadarConfig(args.cfg).get_params()
 
     # Initialize the radar
     radar = Radar(args.cfg, cb=update_frame)

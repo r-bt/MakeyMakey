@@ -61,7 +61,8 @@ def fft_processs(adc_samples):
     # return fft_range_azi
     # fft_range_azi_cd = np.sum(fft_range_azi, 0)
 
-    fft_mag = np.fft.fftshift(np.log(np.abs(fft_range_doppler[:, :, 0])), axes=0)
+    # fft_mag = np.fft.fftshift(np.log(np.abs(fft_range_doppler[:, :, 0])), axes=0)
+    fft_mag = np.fft.fftshift(np.log(np.abs(fft_range_azi[:, :, 0])), axes=0)
     return fft_mag
 
 
