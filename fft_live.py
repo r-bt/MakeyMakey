@@ -21,7 +21,7 @@ def update_frame(msg):
     avg_chirps = np.mean(frame, axis=0)
     signal = avg_chirps[:, 0]
 
-    fft_result = np.fft.fftshift(np.fft.fft(signal))
+    fft_result = np.fft.fft(signal)
     fft_magnitude = np.abs(fft_result)
     dists = np.arange(fft_magnitude.shape[0]) * range_res
 
@@ -51,7 +51,7 @@ def run_dash():
             ),
         )
 
-    app.run_server(debug=False, use_reloader=False)
+    app.run(debug=False, use_reloader=False)
 
 
 def main():
