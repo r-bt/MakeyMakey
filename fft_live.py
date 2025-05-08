@@ -24,7 +24,7 @@ def update_frame(msg):
     signal = avg_chirps[:, 0]
 
     # Take the FFT
-    fft_result = np.fft(signal)
+    fft_result = np.fft.fft(signal)
     fft_result = np.fft.fftshift(fft_result)
     fft_magnitude = np.abs(fft_result)
 
@@ -60,3 +60,6 @@ def main():
 
     # Initialize the radar
     radar = Radar(args.cfg, cb=update_frame)
+
+if __name__ == '__main__':
+    main()
