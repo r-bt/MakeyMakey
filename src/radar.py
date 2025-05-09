@@ -23,6 +23,10 @@ class Radar:
 
         self.config = RadarConfig(cfg_path).get_params()
 
+    def run_polling(self, cb=None):
+        print("Begin capturing data!")
+        self.radar.dca1000.flush_data_socket()
+
         try:
             while True:
                 frame_data, new_frame = self.radar.update_frame_buffer()

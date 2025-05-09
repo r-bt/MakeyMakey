@@ -40,6 +40,7 @@ def main():
 
     # Initialize the radar
     radar = Radar(args.cfg, cb=update_frame)
+    radar.run_polling(cb=update_frame)
 
 
 if __name__ == "__main__":

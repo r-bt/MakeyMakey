@@ -7,7 +7,7 @@ Modified from: https://github.com/ConnectedSystemsLab/xwr_raw_ros/blob/main/src/
 
 import socket
 import struct
-
+import errno
 
 class DCA1000:
 
@@ -101,3 +101,17 @@ class DCA1000:
         self.cmd_socket.close()
         if hasattr(self, "data_socket"):
             self.data_socket.close()
+
+    def flush_data_socket(self):
+        self.data_socket.setblocking(False)
+        try:
+            while True:
+                try:
+                    self.data_socket.recvfrom(2048)
+                except socket.error as e:
+                    if e.errno == errno.EWOULDBLOCK or e.errno == errno.EAGAIN:
+                        break
+                    else:
+                        raise
+        finally:
+            self.data_socket.setblocking(True)
