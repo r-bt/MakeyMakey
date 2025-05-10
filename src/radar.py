@@ -1,7 +1,7 @@
 from datetime import datetime
 from src.xwr.dcapub import DCAPub
 from src.xwr.radar_config import RadarConfig
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 import argparse
 
 

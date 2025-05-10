@@ -1,6 +1,6 @@
 import numpy as np
 import argparse
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 from src.iq_plot import IQPlot, VibrationIntensityPlot
 from src.xwr.radar_config import RadarConfig
 from PyQt5 import QtWidgets

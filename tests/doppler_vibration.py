@@ -3,7 +3,7 @@ from src.xwr.radar_config import RadarConfig
 import pandas as pd
 import json
 import numpy as np
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 from scipy.signal import butter, filtfilt
 import cv2
 from scipy.signal import stft

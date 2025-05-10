@@ -3,7 +3,7 @@ import numpy as np
 from src.xwr.radar_config import RadarConfig
 import pandas as pd
 import json
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 from PyQt5 import QtWidgets
 from src.iq_plot import IQPlot, VibrationIntensityPlot, VibrationIntensityHeatmap
 import sys

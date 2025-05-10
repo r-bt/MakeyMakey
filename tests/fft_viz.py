@@ -2,7 +2,7 @@ import argparse
 import cv2
 import numpy as np
 from src.xwr.radar_config import RadarConfig
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 import pandas as pd
 import json
 

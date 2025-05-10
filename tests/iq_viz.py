@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, QtCore
 import sys

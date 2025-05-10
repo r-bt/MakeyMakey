@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import json
-from src.dsp import reshape_frame
+from src.xwr.dsp import reshape_frame
 from sklearn import svm
 
 
