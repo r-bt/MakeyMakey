@@ -1,7 +1,7 @@
 import argparse
 from src.radar import Radar
 import numpy as np
-from PyQt5 import QtWidgets
+from PyQt6 import QtWidgets
 from src.distance_plot import DistancePlot
 import sys
 from scipy.fft import fft, fftfreq

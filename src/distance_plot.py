@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtWidgets, QtCore
+from PyQt6 import QtWidgets, QtCore
 import numpy as np
 import sys
 
@@ -29,18 +29,18 @@ class DistancePlot(QtWidgets.QMainWindow):
         self.plot_widget.setLabel("bottom", "Distance (m)")
         self.plot_widget.setLabel("left", "Intensity")
 
-    def update(self, distances: np.ndarray, data_list: list[np.ndarray]):
+    def update(self, distances: np.ndarray, data: np.ndarray):
         """
         Args:
-            data_list (list[np.ndarray]): List of 1D arrays of intensity values.
+            data_list (np.ndarray): 2D array of (n_distances, n_receivers).
         """
-        if not data_list:
+        if data is None:
             return
 
-        for i, data in enumerate(data_list):
-            if i >= len(self.lines):
-                break
-            self.lines[i].setData(distances[: len(data)], data)
+        print("Data shape:", data.shape)
+
+        for i in range(data.shape[1]):
+            self.lines[i].setData(distances, data[:, i])
 
         self.plot_widget.setXRange(0, distances[-1] * 1.1)
         global_max = max((np.max(data) for data in data_list if data.size), default=1)
@@ -57,12 +57,15 @@ if __name__ == "__main__":
     distances = np.linspace(0, 5, 90)
 
     # Add 10 entries between 5 and 10
-    distances = np.concatenate((distances, np.linspace(5, 10, 50)))
+    distances = np.concatenate((distances, np.linspace(5, 10, 10)))
 
     # Example data
     base = np.linspace(0, 10, 100)
     data_list = [base, base * 0.8, np.sin(base), np.exp(-0.1 * base) * 10]
 
-    iq_plot.update(data_list, distances)
+    data = np.column_stack(data_list)
 
-    sys.exit(app.exec_())
+    iq_plot.update(distances, data)
+
+    # sys.exit(app.exec_())
+    sys.exit(app.exec())
