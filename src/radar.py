@@ -13,16 +13,16 @@ class Radar:
         Args:
             cfg_path (str): Path to the .lua file used in mmWaveStudio to configure the radar
         """
-        print(f"[INFO] Starting radar node with config: {args.cfg}")
+        print(f"[INFO] Starting radar node with config: {cfg_path}")
 
         self.radar = DCAPub(
             cfg=cfg_path,
         )
 
-        self.config = self.dcapub.config
-        self.params = self.dcapub.params
+        self.config = self.radar.config
+        self.params = self.radar.params
         print("[INFO] Radar connected. Params:")
-        print(self.dcapub.config)
+        print(self.radar.config)
 
     def run_polling(self, cb=None):
         print("[INFO] Begin capturing data!")
