@@ -1,10 +1,10 @@
 import argparse
 from src.radar import Radar
 import numpy as np
-from src.xwr.radar_config import RadarConfig
 from PyQt5 import QtWidgets
 from src.distance_plot import DistancePlot
 import sys
+from scipy.fft import fft, fftfreq
 
 
 def main():
@@ -12,12 +12,19 @@ def main():
     parser.add_argument("--cfg", type=str, required=True)
     args = parser.parse_args()
 
-    # Initalize the radar config
-    config = RadarConfig(args.cfg).get_params()
+    # Initalize the radar
+    radar = Radar(args.cfg)
+
+    params = radar.params
+
+    c = 3e8  # speed of light - m/s
+    SAMPLES_PER_CHIRP = params["n_samples"]  # adc number of samples per chirp
+    SAMPLE_RATE = params["sample_rate"]  # digout sample rate in Hz
+    FREQ_SLOPE = params["chirp_slope"]  # frequency slope in Hz (/s)
 
     # Initalize the GUI
     app = QtWidgets.QApplication(sys.argv)
-    dist_plot = DistancePlot(config["range_res"])
+    dist_plot = DistancePlot(params["range_res"])
     dist_plot.resize(600, 600)
     dist_plot.show()
 
@@ -26,20 +33,20 @@ def main():
         if frame is None:
             return
 
-        avg_chirps = np.mean(frame, axis=0)
-        signal = avg_chirps[:, 0]
+        # Get the fft of the data
+        signal = np.mean(frame, axis=0)
+        fft_result = fft(signal, axis=0)
+        fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
+        fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
-        samples_per_chirp = signal.shape[0]
-
-        fft_result = np.fft.fft(signal)
-        fft_magnitude = np.abs(fft_result[: samples_per_chirp // 2])
-
-        dist_plot.update(fft_magnitude)
-
-        app.processEvents()
+        # Plot the data
+        dist_plot.update_plot(
+            fft_meters[: SAMPLES_PER_CHIRP // 2],
+            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
+        )
 
     # Initialize the radar
-    radar = Radar(args.cfg, cb=update_frame)
+
     radar.run_polling(cb=update_frame)
 
 
