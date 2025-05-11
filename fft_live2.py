@@ -3,6 +3,7 @@ from src.radar import Radar
 import numpy as np
 from PyQt6 import QtWidgets
 from src.distance_plot import DistancePlot
+from src.doppler_plot import DopplerPlot
 import sys
 from scipy.fft import fft, fftfreq, fftshift
 import matplotlib.pyplot as plt
@@ -35,6 +36,10 @@ def main():
     dist_plot = DistancePlot(params["range_res"])
     dist_plot.resize(600, 600)
     dist_plot.show()
+    
+    doppler_plot = DopplerPlot(params["range_res"])
+    doppler_plot.resize(600, 600)
+    doppler_plot.show()
 
     def update_frame(msg):
         global count
@@ -63,14 +68,6 @@ def main():
 
         # Second fft for doppler shift
         doppler_fft = fftshift(fft(fft_result))
-        doppler_freqs = fft_freqs
-
-        # A separate plot to test with
-        plt.plot(doppler_freqs, np.abs(doppler_fft))
-        plt.title('Doppler plot')
-        plt.xlabel('Frequency (Hz)')
-        plt.ylabel('Magnitude')
-        plt.show()
 
         # Plot the data
         dist_plot.update(
@@ -78,6 +75,10 @@ def main():
             np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
         )
 
+        doppler_plot.update(
+            fft_meters[: SAMPLES_PER_CHIRP // 2], 
+            np.abs(doppler_fft[: SAMPLES_PER_CHIRP // 2, :]),
+        )
         app.processEvents()
 
     # Initialize the radar
