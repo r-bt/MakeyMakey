@@ -42,13 +42,15 @@ def main():
         # Get the fft of the data
         signal = np.mean(frame, axis=0)
         fft_result = fft(signal, axis=0)
+        # Get the doppler shift of the data by taking a second fft
+        doppler_result = fft(fft_result, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
         # Plot the data
         dist_plot.update_plot(
             fft_meters[: SAMPLES_PER_CHIRP // 2],
-            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
+            np.abs(doppler_result[: SAMPLES_PER_CHIRP // 2, :]),
         )
 
     # Initialize the radar
