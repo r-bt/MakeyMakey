@@ -60,7 +60,7 @@ def main():
         if frame is None:
             return
 
-        frame = sliding_window(frame, window_buffer, WINDOW_SIZE)
+        # frame = sliding_window(frame, window_buffer, WINDOW_SIZE)
 
 
         # frame = reshape_frame(
@@ -70,7 +70,7 @@ def main():
         #     params["n_rx"],
         # )
 
-        # frame = background_subtraction(frame)
+        frame = background_subtraction(frame)
         # Get the fft of the data
         signal = np.mean(frame, axis=1)
 
