@@ -20,7 +20,7 @@ def sliding_window(frame, buffer, window_size):
     buffer.append(frame)
     if len(buffer) == window_size:
         window_data = np.stack(buffer, axis=0)
-        processed_frame = background_subtraction(window_data)
+        processed_frame = np.mean(window_data, axis=0)
         return processed_frame
     return frame
 
@@ -72,11 +72,11 @@ def main():
 
         # frame = background_subtraction(frame)
         # Get the fft of the data
-        signal = np.mean(processed_frame, axis=0)
+        signal = np.mean(processed_frame, axis=1)
 
         # signal = signal - background
 
-        fft_result = fft(signal, axis=0)
+        fft_result = fft(signal)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
