@@ -74,26 +74,49 @@ def main():
         # Get the fft of the data
         signal = np.mean(processed_frame, axis=1)
 
+        n_samples = SAMPLES_PER_CHIRP
+
+        if (len(signal) < n_samples):
+            signal_padded = np.zeros(n_samples)
+            signal_padded[:len(signal)] = signalsignal = signal_padded
+        else:
+            signal = signal[:n_samples]
+
         # signal = signal - background
 
         fft_result = fft(signal)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
+        half_n = n_samples//2
+        half_fft = np.abs(fft_result[:half_n])
+        half_meters = fft_meters[:half_n]
 
+        plot_y = half_fft.reshape(-1, 1)
+        plot_x = half_meters
+
+        if (len(plot_x) != len(plot_y)):
+            min_len = min(len(plot_x), len(plot_y))
+            plot_x = plot_x[:min_len]
+            plot_y = plot_y[:min_len]
 
         # Second fft for doppler shift
         doppler_fft = fftshift(fft(fft_result))
+        doppler_data = np.abs(doppler_fft[:half_n]).reshape(-1, 1)
+
+        if len(plot_x) != len(doppler_data):
+            doppler_data = doppler_data[:len(plot_x)]
+
 
         # Plot the data
         dist_plot.update(
-            fft_meters[: SAMPLES_PER_CHIRP // 2],
+            plot_x,
             np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
         )
 
         doppler_plot.update(
-            fft_meters[: SAMPLES_PER_CHIRP // 2], 
-            np.abs(doppler_fft[: SAMPLES_PER_CHIRP // 2, :]),
+            plot_x, 
+            doppler_data,
         )
         app.processEvents()
 
