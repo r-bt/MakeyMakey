@@ -9,6 +9,7 @@ import pandas as pd
 from src.xwr.dsp import reshape_frame
 from src.xwr.radar_config import RadarConfig
 import json
+import time
 
 
 def background_subtraction(frame):
@@ -43,23 +44,13 @@ def main():
     dist_plot.resize(600, 600)
     dist_plot.show()
 
-    # Read in the frames
-    df = pd.read_csv(args.data, chunksize=1)
+    # Read the saved data file
+    data = np.load(args.data)["data"]
 
-    for chunk in df:
-        data_json = json.loads(chunk["data"].iloc[0])
+    for frame in data:
+        frame = background_subtraction(frame)
 
-        data = np.array(data_json, dtype=np.int16)
-
-        # Reshape the data into a 3D array (n_chirps_per_frame, samples_per_chirp, n_receivers) of IQ samples
-        reshaped_frame = reshape_frame(
-            data,
-            n_chirps_per_frame,
-            samples_per_chirp,
-            n_receivers,
-        )
-
-        signal = np.mean(reshaped_frame, axis=0)
+        signal = np.mean(frame, axis=0)
 
         fft_result = fft(signal, axis=0)
         fft_freqs = fftfreq(samples_per_chirp, 1 / SAMPLE_RATE)
@@ -72,6 +63,8 @@ def main():
         )
 
         app.processEvents()
+
+        time.sleep(0.1)
 
 
 if __name__ == "__main__":
