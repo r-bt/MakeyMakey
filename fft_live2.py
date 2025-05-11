@@ -21,7 +21,8 @@ def sliding_window(frame, buffer, window_size):
     if len(buffer) == window_size:
         window_data = np.stack(buffer, axis=0)
         processed_frame = background_subtraction(window_data)
-    return processed_frame
+        return processed_frame
+    return frame
 
 def main():
     parser = argparse.ArgumentParser()
@@ -44,9 +45,9 @@ def main():
     dist_plot.resize(600, 600)
     dist_plot.show()
     
-    doppler_plot = DopplerPlot(params["range_res"])
-    doppler_plot.resize(600, 600)
-    doppler_plot.show()
+    # doppler_plot = DopplerPlot(params["range_res"])
+    # doppler_plot.resize(600, 600)
+    # doppler_plot.show()
 
     WINDOW_SIZE = 8
     window_buffer = deque(maxlen=WINDOW_SIZE)
@@ -90,10 +91,10 @@ def main():
             np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
         )
 
-        doppler_plot.update(
-            fft_meters[: SAMPLES_PER_CHIRP // 2], 
-            np.abs(doppler_fft[: SAMPLES_PER_CHIRP // 2, :]),
-        )
+        # doppler_plot.update(
+        #     fft_meters[: SAMPLES_PER_CHIRP // 2], 
+        #     np.abs(doppler_fft[: SAMPLES_PER_CHIRP // 2, :]),
+        # )
         app.processEvents()
 
     # Initialize the radar
