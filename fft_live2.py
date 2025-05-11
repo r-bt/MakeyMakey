@@ -6,6 +6,7 @@ from src.distance_plot import DistancePlot
 import sys
 from scipy.fft import fft, fftfreq, fftshift
 import matplotlib.pyplot as plt
+
 def background_subtraction(frame):
     after_subtraction = np.zeros_like(frame)
     for i in range(1, frame.shape[0]):
@@ -43,12 +44,12 @@ def main():
         if frame is None:
             return
 
-        frame = reshape_frame(
-            frame,
-            params["n_chirps"],
-            params["n_samples"],
-            params["n_rx"],
-        )
+        # frame = reshape_frame(
+        #     frame,
+        #     params["n_chirps"],
+        #     params["n_samples"],
+        #     params["n_rx"],
+        # )
 
         frame = background_subtraction(frame)
         # Get the fft of the data
