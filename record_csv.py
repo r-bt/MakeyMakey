@@ -6,53 +6,36 @@ import argparse
 from datetime import datetime
 import csv
 import json
-import threading
 import queue
-import numpy as np
+from multiprocessing import Process
 
 from src.radar import Radar
 
-writer = None
-
 q = queue.Queue()
-
-
-def init_writer():
-    """
-    Initializes the csv writer
-    """
-    global writer
-    if writer is None:
-        filename = "data/radar_data_{}.csv".format(
-            datetime.now().strftime("%Y%m%d_%H%M%S")
-        )
-
-        f = open(filename, "w", newline="")
-        writer = csv.DictWriter(
-            f, fieldnames=["data_real", "data_imag", "timestamp", "params"]
-        )
-        writer.writeheader()
 
 
 def write_loop():
     """
     Loop to write the data to the csv file
     """
-    global writer
-    while True:
-        msg = q.get()
-        if msg is None:
-            break
+    filename = "data/radar_data_{}.csv".format(datetime.now().strftime("%Y%m%d_%H%M%S"))
+    with open(filename, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["data", "timestamp", "params"])
+        writer.writeheader()
 
-        # Write the data to the csv file
-        writer.writerow(
-            {
-                "data_real": json.dumps(np.real(msg["data"]).tolist()),
-                "data_imag": json.dumps(np.imag(msg["data"]).tolist()),
-                "timestamp": msg["timestamp"],
-                "params": json.dumps(msg["params"]),
-            }
-        )
+        while True:
+            msg = q.get()
+            if msg is None:  # Exit signal
+                break
+
+            # Write the data to the csv file
+            writer.writerow(
+                {
+                    "data_real": json.dumps(msg["data"].tolist()),
+                    "timestamp": msg["timestamp"],
+                    "params": json.dumps(msg["params"]),
+                }
+            )
 
 
 def log(msg):
@@ -68,14 +51,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Initialize the CSV writer
-    init_writer()
+    # Start the write loop in a separate process
 
-    # Start the write loop in a separate thread
-    write_thread = threading.Thread(target=write_loop)
-    write_thread.start()
+    p = Process(target=write_loop)
+    p.start()
 
     # Initialize the radar
     radar = Radar(args.cfg)
 
     radar.run_polling(cb=log)
+
+    # Signal the write loop to exit and wait for the thread to finish
+    q.put(None)
+    p.join()

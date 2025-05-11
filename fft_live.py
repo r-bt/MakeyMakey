@@ -6,12 +6,14 @@ from src.distance_plot import DistancePlot
 import sys
 from scipy.fft import fft, fftfreq
 
+
 def background_subtraction(frame):
     after_subtraction = np.zeros_like(frame)
     for i in range(1, frame.shape[0]):
-        after_subtraction[i-1] = frame[i] - frame[i-1]
+        after_subtraction[i - 1] = frame[i] - frame[i - 1]
 
     return after_subtraction
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -48,14 +50,14 @@ def main():
 
         fft_result = fft(signal, axis=0)
         # Get the doppler shift of the data by taking a second fft
-        doppler_result = fft(fft_result, axis=0)
+        # doppler_result = fft(fft_result, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
         # Plot the data
         dist_plot.update(
             fft_meters[: SAMPLES_PER_CHIRP // 2],
-            np.abs(doppler_result[: SAMPLES_PER_CHIRP // 2, :]),
+            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
         )
 
         app.processEvents()
