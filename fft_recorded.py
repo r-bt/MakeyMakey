@@ -31,9 +31,6 @@ def main():
     config = RadarConfig(args.cfg).get_params()
 
     c = 3e8  # speed of light - m/s
-    n_chirps_per_frame = config["n_chirps"]
-    n_receivers = config["n_rx"]
-    samples_per_chirp = config["n_samples"]
     SAMPLE_RATE = config["sample_rate"]  # digout sample rate in Hz
     FREQ_SLOPE = config["chirp_slope"]  # frequency slope in Hz (/s)
     SAMPLES_PER_CHIRP = config["n_samples"]  # adc number of samples per chirp
@@ -53,7 +50,7 @@ def main():
         signal = np.mean(frame, axis=0)
 
         fft_result = fft(signal, axis=0)
-        fft_freqs = fftfreq(samples_per_chirp, 1 / SAMPLE_RATE)
+        fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
         # Plot the data

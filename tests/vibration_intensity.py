@@ -82,7 +82,7 @@ def vibration_intensity(frame, freq, chirp_sample_rate):
     chirps_in_period = int(chirp_sample_rate * period)
     chirps_in_half_period = chirps_in_period // 2
 
-    n_chirps, samples_per_chirp, n_receivers = frame.shape
+    n_chirps, _, _ = frame.shape
 
     dfs = []
     dns = []
@@ -98,7 +98,7 @@ def vibration_intensity(frame, freq, chirp_sample_rate):
             np.mean(np.abs(frame[k + chirps_in_period, :, :] - frame[k, :, :]), axis=0)
         )
 
-    df = np.max(dfs, axis=0)
+    df = np.mean(dfs, axis=0)
     dn = np.mean(dns, axis=0)
 
     # Calculate the vibration intensity
