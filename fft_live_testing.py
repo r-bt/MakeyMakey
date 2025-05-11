@@ -7,6 +7,22 @@ import sys
 from scipy.fft import fft, fftfreq
 
 
+def sliding_window_average(frame, window_size):
+    """
+    Compute the moving average of the data across frames
+
+    Args:
+        frame (np.ndarray): The input data array (n_chirps_per_frame, n_fft_bins)
+        window_size (int): The size of the moving average window.
+    """
+    kernel = np.ones(window_size) / window_size
+    filtered = np.apply_along_axis(
+        lambda m: np.convolve(m, kernel, mode="same"), axis=0, arr=frame
+    )
+    pad = window_size // 2
+    return filtered[pad:-pad]
+
+
 def background_subtraction(frame):
     after_subtraction = np.zeros_like(frame)
     for i in range(1, frame.shape[0]):
@@ -40,6 +56,7 @@ def main():
         frame = msg.get("data", None)
         if frame is None:
             return
+        frame = sliding_window_average(frame, 10)
         frame = background_subtraction(frame)
 
         # Get the fft of the data
