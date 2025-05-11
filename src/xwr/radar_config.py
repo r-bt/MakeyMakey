@@ -124,7 +124,7 @@ class RadarConfig(OrderedDict):
         t_sweep = self["ADC_SAMPLES"] / sample_rate  # in seconds
 
         # Calculate the chirp sampling rate
-        chrip_sampling_rate = chirp_loops * (1 / (frame_time * 1e-3))  # Hz
+        chrip_sampling_rate = 1 / (chirp_time * 1e-6)  # in Hz
 
         # Calculate the maximum velocity
         operating_freq = self["START_FREQ"] * 1e9  # GHz to Hz
