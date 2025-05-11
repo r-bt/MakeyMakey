@@ -21,7 +21,8 @@ def sliding_window(frame, buffer, window_size):
     if len(buffer) == window_size:
         window_data = np.stack(buffer, axis=0)
         processed_frame = background_subtraction(window_data)
-    return processed_frame
+        return processed_frame
+    return frame
 
 def main():
     parser = argparse.ArgumentParser()
