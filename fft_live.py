@@ -4,22 +4,14 @@ import numpy as np
 from PyQt6 import QtWidgets
 from src.distance_plot import DistancePlot
 import sys
-<<<<<<< Updated upstream
 from scipy.fft import fft, fftfreq
-from src.xwr.dsp import reshape_frame
-
-=======
-from scipy.fft import fft, fftfreq, fftshift
-import matplotlib.pyplot as plt
->>>>>>> Stashed changes
 
 def background_subtraction(frame):
     after_subtraction = np.zeros_like(frame)
     for i in range(1, frame.shape[0]):
-        after_subtraction[i - 1] = frame[i] - frame[i - 1]
+        after_subtraction[i-1] = frame[i] - frame[i-1]
 
     return after_subtraction
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -46,17 +38,8 @@ def main():
         global count
         global background
         frame = msg.get("data", None)
-        params = msg.get("params", None)
         if frame is None:
             return
-
-        frame = reshape_frame(
-            frame,
-            params["n_chirps"],
-            params["n_samples"],
-            params["n_rx"],
-        )
-
         frame = background_subtraction(frame)
         # Get the fft of the data
         signal = np.mean(frame, axis=0)

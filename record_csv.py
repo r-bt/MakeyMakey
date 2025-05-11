@@ -29,7 +29,7 @@ def init_writer():
 
         f = open(filename, "w", newline="")
         writer = csv.DictWriter(
-            f, fieldnames=["data", "timestamp", "params"]
+            f, fieldnames=["data_real", "data_imag", "timestamp", "params"]
         )
         writer.writeheader()
 
@@ -47,7 +47,8 @@ def write_loop():
         # Write the data to the csv file
         writer.writerow(
             {
-                "data": json.dumps(msg["data"].tolist()),
+                "data_real": json.dumps(np.real(msg["data"]).tolist()),
+                "data_imag": json.dumps(np.imag(msg["data"]).tolist()),
                 "timestamp": msg["timestamp"],
                 "params": json.dumps(msg["params"]),
             }
