@@ -5,3 +5,4 @@ __pycache__/
 *.log
 *.pkl
 .DS_Store
+data/*
