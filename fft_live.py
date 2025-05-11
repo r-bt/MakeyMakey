@@ -4,9 +4,14 @@ import numpy as np
 from PyQt6 import QtWidgets
 from src.distance_plot import DistancePlot
 import sys
+<<<<<<< Updated upstream
 from scipy.fft import fft, fftfreq
 from src.xwr.dsp import reshape_frame
 
+=======
+from scipy.fft import fft, fftfreq, fftshift
+import matplotlib.pyplot as plt
+>>>>>>> Stashed changes
 
 def background_subtraction(frame):
     after_subtraction = np.zeros_like(frame)
@@ -59,15 +64,23 @@ def main():
         # signal = signal - background
 
         fft_result = fft(signal, axis=0)
-        # Get the doppler shift of the data by taking a second fft
-        doppler_result = fft(fft_result, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
+
+        # Second fft for doppler shift
+        doppler_fft = fftshift(fft(fft_result))
+        doppler_freqs = fft_freqs
+
+        # A separate plot to test with
+        plt.plot(doppler_freqs, np.abs(doppler_fft))
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Magnitude')
+        plt.show
 
         # Plot the data
         dist_plot.update(
             fft_meters[: SAMPLES_PER_CHIRP // 2],
-            np.abs(doppler_result[: SAMPLES_PER_CHIRP // 2, :]),
+            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
         )
 
         app.processEvents()
