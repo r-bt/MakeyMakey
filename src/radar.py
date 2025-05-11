@@ -37,13 +37,6 @@ class Radar:
                 if new_frame:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    frame_data = reshape_frame(
-                        frame_data,
-                        self.params["n_chirps"],
-                        self.params["n_samples"],
-                        self.params["n_rx"],
-                    )
-
                     msg = {
                         "data": frame_data,
                         "timestamp": timestamp,
