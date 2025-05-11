@@ -37,32 +37,17 @@ def main():
     dist_plot.show()
 
     def update_frame(msg):
-        global count
-        global background
         frame = msg.get("data", None)
         if frame is None:
             return
         frame = background_subtraction(frame)
+
         # Get the fft of the data
         signal = np.mean(frame, axis=0)
 
-        # signal = signal - background
-
         fft_result = fft(signal, axis=0)
-        # Get the doppler shift of the data by taking a second fft
-        # doppler_result = fft(fft_result, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
-
-        # Second fft for doppler shift
-        doppler_fft = fftshift(fft(fft_result))
-        doppler_freqs = fft_freqs
-
-        # A separate plot to test with
-        plt.plot(doppler_freqs, np.abs(doppler_fft))
-        plt.xlabel('Frequency (Hz)')
-        plt.ylabel('Magnitude')
-        plt.show
 
         # Plot the data
         dist_plot.update(

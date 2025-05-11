@@ -6,12 +6,13 @@ import argparse
 
 class Radar:
 
-    def __init__(self, cfg_path: str):
+    def __init__(self, cfg_path: str, reshape=True):
         """
         Initializes the radar object, starts recording, and publishes the data.
 
         Args:
             cfg_path (str): Path to the .lua file used in mmWaveStudio to configure the radar
+            reshape (bool): Whether to reshape the data or not. Default is True.
         """
         print(f"[INFO] Starting radar node with config: {cfg_path}")
 
@@ -23,6 +24,8 @@ class Radar:
         self.params = self.radar.params
         print("[INFO] Radar connected. Params:")
         print(self.radar.config)
+
+        self.reshape = reshape
 
     def run_polling(self, cb=None):
         print("[INFO] Begin capturing data!")
@@ -37,12 +40,14 @@ class Radar:
                 if new_frame:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    frame_data = reshape_frame(
-                        frame_data,
-                        self.params["n_chirps"],
-                        self.params["n_samples"],
-                        self.params["n_rx"],
-                    )
+                    # If reshaping is enabled, reshape the frame data
+                    if self.reshape:
+                        frame_data = reshape_frame(
+                            frame_data,
+                            self.params["n_chirps"],
+                            self.params["n_samples"],
+                            self.params["n_rx"],
+                        )
 
                     msg = {
                         "data": frame_data,
@@ -75,12 +80,13 @@ class Radar:
                     if not second:
                         second = True
                     else:
-                        frame_data = reshape_frame(
-                            frame_data,
-                            self.params["n_chirps"],
-                            self.params["n_samples"],
-                            self.params["n_rx"],
-                        )
+                        if self.reshape:
+                            frame_data = reshape_frame(
+                                frame_data,
+                                self.params["n_chirps"],
+                                self.params["n_samples"],
+                                self.params["n_rx"],
+                            )
 
                         return frame_data
         except KeyboardInterrupt:
