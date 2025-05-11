@@ -7,6 +7,7 @@ from src.doppler_plot import DopplerPlot
 import sys
 from scipy.fft import fft, fftfreq, fftshift
 import matplotlib.pyplot as plt
+from collections import deque
 
 def background_subtraction(frame):
     after_subtraction = np.zeros_like(frame)
@@ -15,6 +16,12 @@ def background_subtraction(frame):
 
     return after_subtraction
 
+def sliding_window(frame, buffer, window_size):
+    buffer.append(frame)
+    if len(buffer) == window_size:
+        window_data = np.stack(buffer, axis=0)
+        processed_frame = background_subtraction(window_data)
+    return processed_frame
 
 def main():
     parser = argparse.ArgumentParser()
@@ -41,6 +48,9 @@ def main():
     doppler_plot.resize(600, 600)
     doppler_plot.show()
 
+    WINDOW_SIZE = 8
+    window_buffer = deque(maxlen=WINDOW_SIZE)
+
     def update_frame(msg):
         global count
         global background
@@ -49,6 +59,9 @@ def main():
         if frame is None:
             return
 
+        processed_frame = sliding_window(frame, window_buffer, WINDOW_SIZE)
+
+
         # frame = reshape_frame(
         #     frame,
         #     params["n_chirps"],
@@ -56,15 +69,17 @@ def main():
         #     params["n_rx"],
         # )
 
-        frame = background_subtraction(frame)
+        # frame = background_subtraction(frame)
         # Get the fft of the data
-        signal = np.mean(frame, axis=0)
+        signal = np.mean(processed_frame, axis=0)
 
         # signal = signal - background
 
         fft_result = fft(signal, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
+
+
 
         # Second fft for doppler shift
         doppler_fft = fftshift(fft(fft_result))
