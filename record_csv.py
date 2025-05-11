@@ -8,6 +8,7 @@ import csv
 import json
 import threading
 import queue
+import numpy as np
 
 from src.radar import Radar
 
@@ -46,8 +47,8 @@ def write_loop():
         # Write the data to the csv file
         writer.writerow(
             {
-                "data_real": json.dumps(msg["data"].real.tolist()),
-                "data_imag": json.dumps(msg["data"].imag.tolist()),
+                "data_real": json.dumps(np.real(msg["data"]).tolist()),
+                "data_imag": json.dumps(np.imag(msg["data"]).tolist()),
                 "timestamp": msg["timestamp"],
                 "params": json.dumps(msg["params"]),
             }
