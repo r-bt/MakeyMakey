@@ -67,9 +67,10 @@ def main():
 
         # A separate plot to test with
         plt.plot(doppler_freqs, np.abs(doppler_fft))
+        plt.title('Doppler plot')
         plt.xlabel('Frequency (Hz)')
         plt.ylabel('Magnitude')
-        plt.show
+        plt.show()
 
         # Plot the data
         dist_plot.update(
