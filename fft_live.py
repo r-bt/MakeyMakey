@@ -6,9 +6,12 @@ from src.distance_plot import DistancePlot
 import sys
 from scipy.fft import fft, fftfreq
 
-background = None
-count = 0
+def background_subtraction(frame):
+    after_subtraction = np.zeros_like(frame)
+    for i in range(1, frame.shape[0]):
+        after_subtraction[i-1] = frame[i] - frame[i-1]
 
+    return after_subtraction
 
 def main():
     parser = argparse.ArgumentParser()
@@ -37,14 +40,7 @@ def main():
         frame = msg.get("data", None)
         if frame is None:
             return
-        
-        if background is None:
-            if count == 10:
-                background = np.mean(frame, axis=0)
-            else:
-                count += 1
-            return
-
+        frame = background_subtraction(frame)
         # Get the fft of the data
         signal = np.mean(frame, axis=0)
 
