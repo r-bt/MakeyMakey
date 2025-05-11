@@ -7,7 +7,7 @@ from datetime import datetime
 import csv
 import json
 import queue
-from multiprocessing import Process
+import threading
 
 from src.radar import Radar
 
@@ -53,8 +53,9 @@ if __name__ == "__main__":
 
     # Start the write loop in a separate process to hopefully reduce packet drops
 
-    p = Process(target=write_loop)
-    p.start()
+    t = threading.Thread(target=write_loop)
+    t.daemon = True  # Daemonize thread
+    t.start()  # Start the thread
 
     # Initialize the radar. Don't reshape the data since can't json serialize complex numbers
     radar = Radar(args.cfg, reshape=False)
@@ -63,4 +64,4 @@ if __name__ == "__main__":
 
     # Signal the write loop to exit and wait for the thread to finish
     q.put(None)
-    p.join()
+    t.join()
