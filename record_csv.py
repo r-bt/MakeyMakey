@@ -6,10 +6,14 @@ import argparse
 from datetime import datetime
 import csv
 import json
+import threading
+import queue
 
 from src.radar import Radar
 
 writer = None
+
+q = queue.Queue()
 
 
 def init_writer():
@@ -23,24 +27,38 @@ def init_writer():
         )
 
         f = open(filename, "w", newline="")
-        writer = csv.DictWriter(f, fieldnames=["data_real", "data_imag", "timestamp", "params"])
+        writer = csv.DictWriter(
+            f, fieldnames=["data_real", "data_imag", "timestamp", "params"]
+        )
         writer.writeheader()
+
+
+def write_loop():
+    """
+    Loop to write the data to the csv file
+    """
+    global writer
+    while True:
+        msg = q.get()
+        if msg is None:
+            break
+
+        # Write the data to the csv file
+        writer.writerow(
+            {
+                "data_real": json.dumps(msg["data"].real.tolist()),
+                "data_imag": json.dumps(msg["data"].imag.tolist()),
+                "timestamp": msg["timestamp"],
+                "params": json.dumps(msg["params"]),
+            }
+        )
 
 
 def log(msg):
     """
     Callback function to log the data to the csv file
     """
-    global writer
-
-    writer.writerow(
-        {
-            "data_real": json.dumps(msg.get("data").real.tolist()),
-            "data_imag": json.dumps(msg.get("data").imag.tolist()),
-            "timestamp": msg.get("timestamp"),
-            "params": json.dumps(msg.get("params")),
-        }
-    )
+    q.put(msg)
 
 
 if __name__ == "__main__":
@@ -51,6 +69,10 @@ if __name__ == "__main__":
 
     # Initialize the CSV writer
     init_writer()
+
+    # Start the write loop in a separate thread
+    write_thread = threading.Thread(target=write_loop)
+    write_thread.start()
 
     # Initialize the radar
     radar = Radar(args.cfg)
