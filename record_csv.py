@@ -26,19 +26,22 @@ def init_writer():
         writer = csv.DictWriter(f, fieldnames=["data", "timestamp"])
         writer.writeheader()
 
+data = []
 
 def log(msg):
     """
     Callback function to log the data to the csv file
     """
-    global writer
+    global data
 
-    writer.writerow(
-        {
-            "data": json.dumps(msg.get("data").tolist()),
-            "timestamp": msg.get("timestamp"),
-        }
-    )
+    data.append(msg)
+
+    # writer.writerow(
+    #     {
+    #         "data": json.dumps(msg.get("data").tolist()),
+    #         "timestamp": msg.get("timestamp"),
+    #     }
+    # )
 
 
 if __name__ == "__main__":
@@ -51,4 +54,15 @@ if __name__ == "__main__":
     init_writer()
 
     # Initialize the radar
-    radar = Radar(args.cfg, cb=log)
+    radar = Radar(args.cfg, reshape=False)
+    radar.run_polling(cb=log)
+
+    for msg in data:
+        writer.writerow(
+            {
+                "data": json.dumps(msg.get("data").tolist()),
+                "timestamp": msg.get("timestamp"),
+            }
+        )
+    
+    print("Wrote all data out!")
