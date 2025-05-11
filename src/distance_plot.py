@@ -37,14 +37,12 @@ class DistancePlot(QtWidgets.QMainWindow):
         if data is None:
             return
 
-        print("Data shape:", data.shape)
-
         for i in range(data.shape[1]):
             self.lines[i].setData(distances, data[:, i])
 
-        self.plot_widget.setXRange(0, distances[-1] * 1.1)
-        global_max = max((np.max(data) for data in data_list if data.size), default=1)
-        self.plot_widget.setYRange(0, global_max * 1.1)
+        self.plot_widget.setXRange(0, 2.5)
+        global_max = np.max(np.max(data, axis=0), axis=0)
+        self.plot_widget.setYRange(0, 50000)
 
 
 if __name__ == "__main__":
