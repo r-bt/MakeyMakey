@@ -1,0 +1,78 @@
+import argparse
+from src.radar import Radar
+import numpy as np
+from PyQt6 import QtWidgets
+from src.distance_plot import DistancePlot
+import sys
+from scipy.fft import fft, fftfreq
+import pandas as pd
+from src.xwr.dsp import reshape_frame
+from src.xwr.radar_config import RadarConfig
+import json
+
+
+def background_subtraction(frame):
+    after_subtraction = np.zeros_like(frame)
+    for i in range(1, frame.shape[0]):
+        after_subtraction[i - 1] = frame[i] - frame[i - 1]
+
+    return after_subtraction
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Record data from the DCA1000")
+    parser.add_argument("--data", type=str, required=True, help="Path to the .csv file")
+    parser.add_argument("--cfg", type=str, required=True, help="Path to the .lua file")
+
+    args = parser.parse_args()
+
+    # Initalize the radar config
+    config = RadarConfig(args.cfg).get_params()
+
+    c = 3e8  # speed of light - m/s
+    n_chirps_per_frame = config["n_chirps"]
+    n_receivers = config["n_rx"]
+    samples_per_chirp = config["n_samples"]
+    SAMPLE_RATE = config["sample_rate"]  # digout sample rate in Hz
+    FREQ_SLOPE = config["chirp_slope"]  # frequency slope in Hz (/s)
+    SAMPLES_PER_CHIRP = config["n_samples"]  # adc number of samples per chirp
+
+    # Initalize the GUI
+    app = QtWidgets.QApplication(sys.argv)
+    dist_plot = DistancePlot(0)
+    dist_plot.resize(600, 600)
+    dist_plot.show()
+
+    # Read in the frames
+    df = pd.read_csv(args.data, chunksize=1)
+
+    for chunk in df:
+        data_json = json.loads(chunk["data"].iloc[0])
+
+        data = np.array(data_json, dtype=np.int16)
+
+        # Reshape the data into a 3D array (n_chirps_per_frame, samples_per_chirp, n_receivers) of IQ samples
+        reshaped_frame = reshape_frame(
+            data,
+            n_chirps_per_frame,
+            samples_per_chirp,
+            n_receivers,
+        )
+
+        signal = np.mean(reshaped_frame, axis=0)
+
+        fft_result = fft(signal, axis=0)
+        fft_freqs = fftfreq(samples_per_chirp, 1 / SAMPLE_RATE)
+        fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
+
+        # Plot the data
+        dist_plot.update(
+            fft_meters[: SAMPLES_PER_CHIRP // 2],
+            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
+        )
+
+        app.processEvents()
+
+
+if __name__ == "__main__":
+    main()
