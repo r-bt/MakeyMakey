@@ -31,7 +31,7 @@ def write_loop():
             # Write the data to the csv file
             writer.writerow(
                 {
-                    "data_real": json.dumps(msg["data"].tolist()),
+                    "data": json.dumps(msg["data"].tolist()),
                     "timestamp": msg["timestamp"],
                     "params": json.dumps(msg["params"]),
                 }
@@ -51,13 +51,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Start the write loop in a separate process
+    # Start the write loop in a separate process to hopefully reduce packet drops
 
     p = Process(target=write_loop)
     p.start()
 
-    # Initialize the radar
-    radar = Radar(args.cfg)
+    # Initialize the radar. Don't reshape the data since can't json serialize complex numbers
+    radar = Radar(args.cfg, reshape=False)
 
     radar.run_polling(cb=log)
 

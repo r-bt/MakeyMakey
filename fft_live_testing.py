@@ -37,16 +37,13 @@ def main():
     dist_plot.show()
 
     def update_frame(msg):
-        global count
-        global background
         frame = msg.get("data", None)
         if frame is None:
             return
         frame = background_subtraction(frame)
+
         # Get the fft of the data
         signal = np.mean(frame, axis=0)
-
-        # signal = signal - background
 
         fft_result = fft(signal, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
