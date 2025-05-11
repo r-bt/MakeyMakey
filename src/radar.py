@@ -52,7 +52,6 @@ class Radar:
                     msg = {
                         "data": frame_data,
                         "timestamp": timestamp,
-                        "params": self.params,
                     }
 
                     if cb:

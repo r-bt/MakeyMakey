@@ -6,43 +6,39 @@ import argparse
 from datetime import datetime
 import csv
 import json
-import queue
-import threading
 
 from src.radar import Radar
 
-q = queue.Queue()
+writer = None
 
 
-def write_loop():
+def init_writer():
     """
-    Loop to write the data to the csv file
+    Initializes the csv writer
     """
-    filename = "data/radar_data_{}.csv".format(datetime.now().strftime("%Y%m%d_%H%M%S"))
-    with open(filename, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["data", "timestamp", "params"])
+    global writer
+    if writer is None:
+        filename = "data/radar_data_{}.csv".format(
+            datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
+
+        f = open(filename, "w", newline="")
+        writer = csv.DictWriter(f, fieldnames=["data", "timestamp"])
         writer.writeheader()
-
-        while True:
-            msg = q.get()
-            if msg is None:  # Exit signal
-                break
-
-            # Write the data to the csv file
-            writer.writerow(
-                {
-                    "data": json.dumps(msg["data"].tolist()),
-                    "timestamp": msg["timestamp"],
-                    "params": json.dumps(msg["params"]),
-                }
-            )
 
 
 def log(msg):
     """
     Callback function to log the data to the csv file
     """
-    q.put(msg)
+    global writer
+
+    writer.writerow(
+        {
+            "data": json.dumps(msg.get("data").tolist()),
+            "timestamp": msg.get("timestamp"),
+        }
+    )
 
 
 if __name__ == "__main__":
@@ -51,17 +47,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Start the write loop in a separate process to hopefully reduce packet drops
+    # Initialize the CSV writer
+    init_writer()
 
-    t = threading.Thread(target=write_loop)
-    t.daemon = True  # Daemonize thread
-    t.start()  # Start the thread
-
-    # Initialize the radar. Don't reshape the data since can't json serialize complex numbers
-    radar = Radar(args.cfg, reshape=False)
-
-    radar.run_polling(cb=log)
-
-    # Signal the write loop to exit and wait for the thread to finish
-    q.put(None)
-    t.join()
+    # Initialize the radar
+    radar = Radar(args.cfg, cb=log)
