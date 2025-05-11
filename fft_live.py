@@ -4,7 +4,7 @@ import numpy as np
 from PyQt6 import QtWidgets
 from src.distance_plot import DistancePlot
 import sys
-from scipy.fft import fft, fftfreq
+from scipy.fft import fft, fftfreq, fftshift
 
 
 def background_subtraction(frame):
@@ -54,15 +54,15 @@ def main():
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
-        # Second fft for doppler shift
-        doppler_fft = fftshift(fft(fft_result))
-        doppler_freqs = fft_freqs
+        # # Second fft for doppler shift
+        # doppler_fft = fftshift(fft(fft_result))
+        # doppler_freqs = fft_freqs
 
-        # A separate plot to test with
-        plt.plot(doppler_freqs, np.abs(doppler_fft))
-        plt.xlabel('Frequency (Hz)')
-        plt.ylabel('Magnitude')
-        plt.show
+        # # A separate plot to test with
+        # plt.plot(doppler_freqs, np.abs(doppler_fft))
+        # plt.xlabel('Frequency (Hz)')
+        # plt.ylabel('Magnitude')
+        # plt.show
 
         # Plot the data
         dist_plot.update(

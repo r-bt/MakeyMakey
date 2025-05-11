@@ -42,7 +42,7 @@ class DistancePlot(QtWidgets.QMainWindow):
 
         self.plot_widget.setXRange(0, 3.5)
         global_max = np.max(np.max(data, axis=0), axis=0)
-        self.plot_widget.setYRange(0, 5000)
+        self.plot_widget.setYRange(0, 1000)
 
 
 if __name__ == "__main__":
