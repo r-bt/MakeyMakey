@@ -75,7 +75,7 @@ def main():
 
     with Manager() as manager:
         processed_frames = manager.Queue()
-        p = Process(target=init_plot, args=(CHIRP_RATE, processed_frames, fft_meters))
+        p = Process(target=init_plot, args=(CHIRP_RATE, processed_frames))
         p.start()
 
         def process_frame(msg):
