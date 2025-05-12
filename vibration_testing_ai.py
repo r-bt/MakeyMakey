@@ -6,13 +6,12 @@ import sys
 from scipy.fft import fft, fftfreq
 from scipy.signal import stft
 from src.xwr.radar_config import RadarConfig
-import cv2
-import matplotlib.pyplot as plt
-import time
 from src.dsp import subtract_background
 
+# Other mills at 2.35, 3.9
 
-OTHERMILL_DISTANCES = [1.3]
+# OTHERMILL_DISTANCES = [1.3]
+OTHERMILL_DISTANCES = [2.35, 3.9]
 DISTANCE_THRESHOLD = 0.1
 
 alpha = 0.6  # decay factor for running average
@@ -135,11 +134,9 @@ def main():
 
         heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
 
-        print(np.max(heatmap))
-
         # Apply a threshold to the heatmap
-        threshold = 100
-        heatmap = np.where(heatmap > threshold, heatmap, 0)
+        # threshold = 100
+        # heatmap = np.where(heatmap > threshold, heatmap, 0)
 
         objects = identify_vibrations(
             heatmap,
@@ -148,7 +145,7 @@ def main():
             max_distance=DISTANCE_THRESHOLD,
         )
 
-        all_objs.append(objects)
+        all_objs.extend(objects)
 
     np.save(
         f"training/{name}.npy",

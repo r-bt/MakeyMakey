@@ -27,58 +27,6 @@ def subtract_background_1(current_frame):
     return current_frame - background.astype(current_frame.dtype)
 
 
-def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
-    """
-    Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
-
-    Args:
-        heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
-        fft_meters (np.ndarray): The range bins in meters
-        threshold (int): The threshold to use for identifying vibrations
-
-    Returns:
-        objects (list): A list of dictionaries containing object distance range and all frequencies where greater than threshold
-    """
-    # Find the indices where the heatmap exceeds the threshold
-    indices = np.where(heatmap > threshold)
-
-    locs = zip(indices[0], indices[1])  # (vib_freq, distance)
-
-    # Cluster the locs based on their distances to each other
-    clusters = []
-    for loc in locs:
-        if len(clusters) == 0:
-            clusters.append([loc])
-        else:
-            for cluster in clusters:
-                loc_dist = fft_meters[loc[1]]
-                cluster_dist = fft_meters[cluster[0][1]]
-
-                if np.abs(loc_dist - cluster_dist) < max_distance:
-                    cluster.append(loc)
-                    break
-            else:
-                clusters.append([loc])
-
-    # Calculate the average distance of each cluster
-    objects = []
-    for cluster in clusters:
-        min_dis = np.min([fft_meters[loc[1]] for loc in cluster])
-        max_dis = np.max([fft_meters[loc[1]] for loc in cluster])
-
-        frequencies = [(loc[0], heatmap[loc]) for loc in cluster]
-
-        objects.append(
-            {
-                "min_distance": min_dis,
-                "max_distance": max_dis,
-                "frequencies": frequencies,
-            }
-        )
-
-    return objects
-
-
 def main():
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
     parser.add_argument("--data", type=str, required=True, help="Path to the .csv file")
@@ -155,7 +103,7 @@ def main():
         print(np.max(heatmap))
 
         # Apply a threshold to the heatmap
-        threshold = 100
+        threshold = 50
         heatmap = np.where(heatmap > threshold, heatmap, 0)
 
         objects = identify_vibrations(
@@ -175,19 +123,41 @@ def main():
                 # print("Detected object at distance:", obj["min_distance"], "m")
                 # print("Frequencies:", obj["frequencies"])
 
-        # # Use OpenCV to display the heatmap
-        heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
-        heatmap = np.uint8(heatmap)
-        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        # # # Use OpenCV to display the heatmap
+        # heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
+        # heatmap = np.uint8(heatmap)
+        # heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
 
-        heatmap = cv2.resize(heatmap, (800, 600))
+        # heatmap = cv2.resize(heatmap, (800, 600))
 
-        cv2.imshow("Vibration Intensity Heatmap", heatmap)
-        cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+        # cv2.imshow("Vibration Intensity Heatmap", heatmap)
+        # cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
 
-        while True:
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+        # while True:
+        #     if cv2.waitKey(1) & 0xFF == ord("q"):
+        #         break
+
+        # Use matplotlib to display the heatmap
+        step = max(1, len(fft_meters) // 10)  # show ~10 ticks
+        xticks = np.arange(0, len(fft_meters), step)
+
+        plt.imshow(heatmap, cmap="hot", interpolation="nearest", aspect="auto")
+        plt.colorbar()
+        plt.title("Vibration Intensity Heatmap")
+        # plt.xticks(
+        #     ticks=xticks,
+        #     labels=[f"{fft_meters[i]:.2f}" for i in xticks],
+        #     rotation=45,
+        #     ha="right",
+        # )
+
+        print("distance", fft_meters[40])
+
+        plt.show()
+
+        time.sleep(1)
+
+        plt.close("all")
 
     print("Accuracy = ", (detections / len(processed_frames)))
 
