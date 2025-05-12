@@ -56,7 +56,8 @@ def main():
         frame = msg.get("data", None)
         if frame is None:
             return
-        frame = sliding_window_average(frame, 10)
+        
+        
         frame = background_subtraction(frame)
 
         # Get the fft of the data
