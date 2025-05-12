@@ -78,48 +78,58 @@ def main():
         fft_freqs = fft_freqs[: SAMPLES_PER_CHIRP // 2]
         fft_meters = fft_meters[: SAMPLES_PER_CHIRP // 2]
 
-        # Threshold the fft result by magnitude
-        # threshold = 200
-        # fft_result = np.where(np.abs(fft_result) > threshold, fft_result, 0)
-
         processed_frames.append(fft_result)
 
-    processed_frames = np.array(processed_frames[:50])
+    processed_frames = np.array(processed_frames)
 
-    heatmap = []
+    # Split processed_frames into chunks of size 128
+    chunk_size = 128
+    num_chunks = len(processed_frames) // chunk_size
+    processed_frames = np.array_split(processed_frames, num_chunks)
 
-    for range_bin in range(processed_frames.shape[1]):
-        time_series = processed_frames[:, range_bin]  # shape: (n_chirps,)
-        f, t, stft_matrix = stft(time_series, fs=CHIRP_RATE, nperseg=25, noverlap=16)
-        magnitude = np.abs(stft_matrix).mean(axis=1)  # avg across time windows
-        heatmap.append(magnitude)
+    for chunk in processed_frames:
+        heatmap = []
 
-    heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
+        for range_bin in range(chunk.shape[1]):
+            time_series = chunk[:, range_bin]  # shape: (n_chirps,)
+            f, t, stft_matrix = stft(time_series, fs=CHIRP_RATE, nperseg=64, noverlap=8)
+            magnitude = np.abs(stft_matrix).mean(axis=1)  # avg across time windows
+            heatmap.append(magnitude)
 
-    # Apply a threshold to the heatmap
-    threshold = 1000
-    heatmap = np.where(heatmap > threshold, heatmap, 0)
+        heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
 
-    # Use matplot to plot the heatmap
-    plt.imshow(heatmap, aspect="auto", cmap="hot", interpolation="nearest")
-    plt.colorbar(label="Magnitude")
-    plt.xlabel("Range Bin")
-    plt.ylabel("Vibration Frequency Bin")
-    plt.title("Vibration Intensity Heatmap")
+        # Apply a threshold to the heatmap
+        threshold = 100
+        heatmap = np.where(heatmap > threshold, heatmap, 0)
 
-    # Set the x-ticks and y-ticks
-    plt.xticks(
-        ticks=np.arange(0, len(fft_meters), step=10),
-        labels=[f"{x:.2f}" for x in fft_meters[::10]],
-        rotation=45,
-    )
+        # Use matplot to plot the heatmap
+        # plt.imshow(heatmap, aspect="auto", cmap="hot", interpolation="nearest")
+        # plt.colorbar(label="Magnitude")
+        # plt.xlabel("Range Bin")
+        # plt.ylabel("Vibration Frequency Bin")
+        # plt.title("Vibration Intensity Heatmap")
 
-    # Show the plot
-    plt.show()
+        # # Set the x-ticks and y-ticks
+        # plt.xticks(
+        #     ticks=np.arange(0, len(fft_meters), step=10),
+        #     labels=[f"{x:.2f}" for x in fft_meters[::10]],
+        #     rotation=45,
+        # )
 
-    while True:
-        if cv2.waitKey(1) == 27:  # ESC to quit
-            break
+        # # Show the plot
+        # plt.show()
+
+        # Use OpenCV to display the heatmap
+        heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
+        heatmap = np.uint8(heatmap)
+        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        heatmap = cv2.resize(heatmap, (800, 600))
+        cv2.imshow("Vibration Intensity Heatmap", heatmap)
+        cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+
+        while True:
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
 
 
 if __name__ == "__main__":
