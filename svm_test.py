@@ -9,6 +9,7 @@ positive_data = [
 negative_data = [
     "training/exp2_always_off_persons_on_other_tables_2m_4m.npy",
     "training/exp2_always_off_person_working_at_machine_persons_on_other_tables.npy",
+    "training/exp2_lots_of_people_no_machines.npy",
 ]
 
 # Load all the data into X and the labels into Y

@@ -6,7 +6,7 @@ import sys
 from scipy.fft import fft, fftfreq
 from scipy.signal import stft
 from src.xwr.radar_config import RadarConfig
-from src.dsp import subtract_background
+from src.dsp import subtract_background, identify_vibrations
 
 # Other mills at 2.35, 3.9
 
@@ -25,36 +25,6 @@ def subtract_background_1(current_frame):
         return np.zeros_like(current_frame)
     background = alpha * background + (1 - alpha) * current_frame
     return current_frame - background.astype(current_frame.dtype)
-
-
-def identify_vibrations(heatmap, fft_meters, othermills, max_distance=0.1):
-    """
-    Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
-
-    Args:
-        heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
-        fft_meters (np.ndarray): The range bins in meters
-        othermills (list): A list of distances to other mills
-        threshold (int): The threshold to use for identifying vibrations
-
-    Returns:
-        The frequencies around each othermill
-    """
-    objects = []
-
-    for othermill in othermills:
-        left_index = np.abs(fft_meters - (othermill - max_distance)).argmin()
-        right_index = np.abs(fft_meters - (othermill + max_distance)).argmin()
-
-        # Get a slice of the heatmap around the othermill
-        othermill_slice = heatmap[:, left_index : right_index + 1]
-
-        othermill_slice_flat = othermill_slice.flatten()
-        othermill_slice_flat = np.hstack([othermill_slice_flat, othermill])
-
-        objects.append(othermill_slice_flat)
-
-    return objects
 
 
 def main():
