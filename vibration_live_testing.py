@@ -5,13 +5,19 @@ from scipy.signal import stft
 from src.radar import Radar
 import queue
 from multiprocessing import Process, Manager
-import cv2
+from src.dsp import subtract_background, identify_vibrations
+import joblib
+
+model = joblib.load("svm_model.joblib")
+
+OTHERMILL_DISTANCES = [2.35, 3.9]
+DISTANCE_THRESHOLD = 0.1
 
 alpha = 0.6  # decay factor for running average
 background = None  # initialize
 
 
-def subtract_background(current_frame):
+def subtract_background_1(current_frame):
     global background
     if background is None:
         background = current_frame.copy()
@@ -20,53 +26,7 @@ def subtract_background(current_frame):
     return current_frame - background.astype(current_frame.dtype)
 
 
-def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
-    """
-    Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
-
-    Args:
-        heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
-        fft_meters (np.ndarray): The range bins in meters
-        threshold (int): The threshold to use for identifying vibrations
-    """
-
-    # Find the indices where the heatmap exceeds the threshold
-    indices = np.where(heatmap > threshold)
-
-    locs = zip(indices[0], indices[1])
-
-    # Cluster the locs based on their distances to each other
-    clusters = []
-    for loc in locs:
-        if len(clusters) == 0:
-            clusters.append([loc])
-        else:
-            for cluster in clusters:
-                loc_dist = fft_meters[loc[1]]
-                cluster_dist = fft_meters[cluster[0][1]]
-
-                if loc_dist - cluster_dist < max_distance:
-                    cluster.append(loc)
-                    break
-            else:
-                clusters.append([loc])
-
-    # Calculate the average distance of each cluster
-    objects = []
-    for cluster in clusters:
-        distances = [fft_meters[loc[1]] for loc in cluster]
-        avg_distance = np.mean(distances)
-        objects.append(
-            {
-                "avg_distance": avg_distance,
-                "frequency": cluster[0][0],
-            }
-        )
-
-    return objects
-
-
-def init_plot(CHIRP_RATE, processed_frames, chunk_size=128):
+def init_plot(CHIRP_RATE, processed_frames, fft_meters, chunk_size=128):
     while True:
         if processed_frames.qsize() < chunk_size:
             continue
@@ -91,19 +51,17 @@ def init_plot(CHIRP_RATE, processed_frames, chunk_size=128):
 
         heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
 
-        # Threshold
-        threshold = 1000
-        heatmap = np.where(heatmap > threshold, heatmap, 0)
+        # Detect the objects
+        objects = identify_vibrations(
+            heatmap,
+            fft_meters,
+            othermills=OTHERMILL_DISTANCES,
+            max_distance=DISTANCE_THRESHOLD,
+        )
 
-        heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
-        heatmap = np.uint8(heatmap)
-        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-        heatmap = cv2.resize(heatmap, (800, 600))
-        cv2.imshow("Vibration Intensity Heatmap", heatmap)
-        cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+        predictions = model.predict(objects)
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+        print(predictions)
 
 
 def main():
@@ -132,7 +90,7 @@ def main():
 
     with Manager() as manager:
         processed_frames = manager.Queue()
-        p = Process(target=init_plot, args=(CHIRP_RATE, processed_frames))
+        p = Process(target=init_plot, args=(CHIRP_RATE, processed_frames, fft_meters))
         p.start()
 
         def process_frame(msg):
@@ -152,7 +110,7 @@ def main():
             frame = np.mean(frame, axis=0)
 
             # Apply background subtraction
-            frame = subtract_background(frame)
+            frame = subtract_background_1(subtract_background(frame))
 
             fft_result = fft(frame, axis=0)
 

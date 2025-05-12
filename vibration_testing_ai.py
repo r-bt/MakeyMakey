@@ -6,9 +6,6 @@ import sys
 from scipy.fft import fft, fftfreq
 from scipy.signal import stft
 from src.xwr.radar_config import RadarConfig
-import cv2
-import matplotlib.pyplot as plt
-import time
 from src.dsp import subtract_background
 
 # Other mills at 2.35, 3.9
@@ -136,8 +133,6 @@ def main():
             heatmap.append(magnitude)
 
         heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
-
-        print(np.max(heatmap))
 
         # Apply a threshold to the heatmap
         # threshold = 100

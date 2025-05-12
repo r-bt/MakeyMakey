@@ -27,58 +27,6 @@ def subtract_background_1(current_frame):
     return current_frame - background.astype(current_frame.dtype)
 
 
-def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
-    """
-    Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
-
-    Args:
-        heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
-        fft_meters (np.ndarray): The range bins in meters
-        threshold (int): The threshold to use for identifying vibrations
-
-    Returns:
-        objects (list): A list of dictionaries containing object distance range and all frequencies where greater than threshold
-    """
-    # Find the indices where the heatmap exceeds the threshold
-    indices = np.where(heatmap > threshold)
-
-    locs = zip(indices[0], indices[1])  # (vib_freq, distance)
-
-    # Cluster the locs based on their distances to each other
-    clusters = []
-    for loc in locs:
-        if len(clusters) == 0:
-            clusters.append([loc])
-        else:
-            for cluster in clusters:
-                loc_dist = fft_meters[loc[1]]
-                cluster_dist = fft_meters[cluster[0][1]]
-
-                if np.abs(loc_dist - cluster_dist) < max_distance:
-                    cluster.append(loc)
-                    break
-            else:
-                clusters.append([loc])
-
-    # Calculate the average distance of each cluster
-    objects = []
-    for cluster in clusters:
-        min_dis = np.min([fft_meters[loc[1]] for loc in cluster])
-        max_dis = np.max([fft_meters[loc[1]] for loc in cluster])
-
-        frequencies = [(loc[0], heatmap[loc]) for loc in cluster]
-
-        objects.append(
-            {
-                "min_distance": min_dis,
-                "max_distance": max_dis,
-                "frequencies": frequencies,
-            }
-        )
-
-    return objects
-
-
 def main():
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
     parser.add_argument("--data", type=str, required=True, help="Path to the .csv file")
