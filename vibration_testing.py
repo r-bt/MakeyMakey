@@ -155,7 +155,7 @@ def main():
         print(np.max(heatmap))
 
         # Apply a threshold to the heatmap
-        threshold = 100
+        threshold = 50
         heatmap = np.where(heatmap > threshold, heatmap, 0)
 
         objects = identify_vibrations(
@@ -175,19 +175,41 @@ def main():
                 # print("Detected object at distance:", obj["min_distance"], "m")
                 # print("Frequencies:", obj["frequencies"])
 
-        # # Use OpenCV to display the heatmap
-        heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
-        heatmap = np.uint8(heatmap)
-        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        # # # Use OpenCV to display the heatmap
+        # heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
+        # heatmap = np.uint8(heatmap)
+        # heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
 
-        heatmap = cv2.resize(heatmap, (800, 600))
+        # heatmap = cv2.resize(heatmap, (800, 600))
 
-        cv2.imshow("Vibration Intensity Heatmap", heatmap)
-        cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+        # cv2.imshow("Vibration Intensity Heatmap", heatmap)
+        # cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
 
-        while True:
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+        # while True:
+        #     if cv2.waitKey(1) & 0xFF == ord("q"):
+        #         break
+
+        # Use matplotlib to display the heatmap
+        step = max(1, len(fft_meters) // 10)  # show ~10 ticks
+        xticks = np.arange(0, len(fft_meters), step)
+
+        plt.imshow(heatmap, cmap="hot", interpolation="nearest", aspect="auto")
+        plt.colorbar()
+        plt.title("Vibration Intensity Heatmap")
+        # plt.xticks(
+        #     ticks=xticks,
+        #     labels=[f"{fft_meters[i]:.2f}" for i in xticks],
+        #     rotation=45,
+        #     ha="right",
+        # )
+
+        print("distance", fft_meters[40])
+
+        plt.show()
+
+        time.sleep(1)
+
+        plt.close("all")
 
     print("Accuracy = ", (detections / len(processed_frames)))
 
