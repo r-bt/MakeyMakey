@@ -11,11 +11,12 @@ import matplotlib.pyplot as plt
 import time
 from src.dsp import subtract_background
 
-alpha = 0.6  # decay factor for running average
-background = None  # initialize
 
 OTHERMILL_DISTANCES = [1.3]
 DISTANCE_THRESHOLD = 0.1
+
+alpha = 0.6  # decay factor for running average
+background = None  # initialize
 
 
 def subtract_background_1(current_frame):
@@ -27,54 +28,32 @@ def subtract_background_1(current_frame):
     return current_frame - background.astype(current_frame.dtype)
 
 
-def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
+def identify_vibrations(heatmap, fft_meters, othermills, max_distance=0.1):
     """
     Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
 
     Args:
         heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
         fft_meters (np.ndarray): The range bins in meters
+        othermills (list): A list of distances to other mills
         threshold (int): The threshold to use for identifying vibrations
 
     Returns:
-        objects (list): A list of dictionaries containing object distance range and all frequencies where greater than threshold
+        The frequencies around each othermill
     """
-    # Find the indices where the heatmap exceeds the threshold
-    indices = np.where(heatmap > threshold)
-
-    locs = zip(indices[0], indices[1])  # (vib_freq, distance)
-
-    # Cluster the locs based on their distances to each other
-    clusters = []
-    for loc in locs:
-        if len(clusters) == 0:
-            clusters.append([loc])
-        else:
-            for cluster in clusters:
-                loc_dist = fft_meters[loc[1]]
-                cluster_dist = fft_meters[cluster[0][1]]
-
-                if np.abs(loc_dist - cluster_dist) < max_distance:
-                    cluster.append(loc)
-                    break
-            else:
-                clusters.append([loc])
-
-    # Calculate the average distance of each cluster
     objects = []
-    for cluster in clusters:
-        min_dis = np.min([fft_meters[loc[1]] for loc in cluster])
-        max_dis = np.max([fft_meters[loc[1]] for loc in cluster])
 
-        frequencies = [(loc[0], heatmap[loc]) for loc in cluster]
+    for othermill in othermills:
+        left_index = np.abs(fft_meters - (othermill - max_distance)).argmin()
+        right_index = np.abs(fft_meters - (othermill + max_distance)).argmin()
 
-        objects.append(
-            {
-                "min_distance": min_dis,
-                "max_distance": max_dis,
-                "frequencies": frequencies,
-            }
-        )
+        # Get a slice of the heatmap around the othermill
+        othermill_slice = heatmap[:, left_index : right_index + 1]
+
+        othermill_slice_flat = othermill_slice.flatten()
+        othermill_slice_flat = np.hstack([othermill_slice_flat, othermill])
+
+        objects.append(othermill_slice_flat)
 
     return objects
 
@@ -85,6 +64,8 @@ def main():
     parser.add_argument("--cfg", type=str, required=True, help="Path to the .lua file")
 
     args = parser.parse_args()
+
+    name = args.data.split("/")[-1].split(".")[0]
 
     # Initalize the radar config
     config = RadarConfig(args.cfg).get_params()
@@ -141,6 +122,8 @@ def main():
 
     detections = 0
 
+    all_objs = []
+
     for chunk in processed_frames:
         heatmap = []
 
@@ -159,37 +142,62 @@ def main():
         heatmap = np.where(heatmap > threshold, heatmap, 0)
 
         objects = identify_vibrations(
-            heatmap, fft_meters, threshold=100, max_distance=0.2
+            heatmap,
+            fft_meters,
+            othermills=OTHERMILL_DISTANCES,
+            max_distance=DISTANCE_THRESHOLD,
         )
 
-        for obj in objects:
-            print("Mean distance:", np.mean([obj["min_distance"], obj["max_distance"]]))
-            if (
-                np.abs(
-                    OTHERMILL_DISTANCES[0]
-                    - np.mean([obj["min_distance"], obj["max_distance"]])
-                )
-                < DISTANCE_THRESHOLD
-            ):
-                detections += 1
-                # print("Detected object at distance:", obj["min_distance"], "m")
-                # print("Frequencies:", obj["frequencies"])
+        all_objs.append(objects)
 
-        # # Use OpenCV to display the heatmap
-        heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
-        heatmap = np.uint8(heatmap)
-        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+    np.save(
+        f"training/{name}.npy",
+        all_objs,
+        allow_pickle=True,
+    )
 
-        heatmap = cv2.resize(heatmap, (800, 600))
+    # for obj in objects:
+    #     slice_heatmap = cv2.normalize(obj, None, 0, 255, cv2.NORM_MINMAX)
+    #     slice_heatmap = np.uint8(slice_heatmap)
+    #     slice_heatmap = cv2.applyColorMap(slice_heatmap, cv2.COLORMAP_JET)
 
-        cv2.imshow("Vibration Intensity Heatmap", heatmap)
-        cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+    #     slice_heatmap = cv2.resize(slice_heatmap, (800, 600))
 
-        while True:
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+    #     cv2.imshow("Vibration Intensity Heatmap", slice_heatmap)
+    #     cv2.setWindowTitle(
+    #         "Vibration Intensity Heatmap", "Vibration Intensity Heatmap"
+    #     )
 
-    print("Accuracy = ", (detections / len(processed_frames)))
+    #     while True:
+    #         if cv2.waitKey(1) & 0xFF == ord("q"):
+    #             break
+
+    # for obj in objects:
+    #     print("Mean distance:", np.mean([obj["min_distance"], obj["max_distance"]]))
+    #     if (
+    #         np.abs(
+    #             OTHERMILL_DISTANCES[0]
+    #             - np.mean([obj["min_distance"], obj["max_distance"]])
+    #         )
+    #         < DISTANCE_THRESHOLD
+    #     ):
+    #         detections += 1
+    #         # print("Detected object at distance:", obj["min_distance"], "m")
+    #         # print("Frequencies:", obj["frequencies"])
+
+    # # # Use OpenCV to display the heatmap
+    # heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
+    # heatmap = np.uint8(heatmap)
+    # heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+    # heatmap = cv2.resize(heatmap, (800, 600))
+
+    # cv2.imshow("Vibration Intensity Heatmap", heatmap)
+    # cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+
+    # while True:
+    #     if cv2.waitKey(1) & 0xFF == ord("q"):
+    #         break
 
 
 if __name__ == "__main__":

@@ -12,6 +12,19 @@ import json
 import time
 from src.dsp import subtract_background
 
+# from src.dsp import subtract_background
+alpha = 0.5  # decay factor for running average
+background = None  # initialize
+
+
+def subtract_background_1(current_frame):
+    global background
+    if background is None:
+        background = current_frame.copy()
+        return np.zeros_like(current_frame)
+    background = alpha * background + (1 - alpha) * current_frame
+    return current_frame - background.astype(current_frame.dtype)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Record data from the DCA1000")
@@ -38,7 +51,7 @@ def main():
     data = np.load(args.data)["data"]
 
     for frame in data:
-        frame = subtract_background(frame)
+        frame = subtract_background_1(subtract_background(frame))
 
         # Get the fft of the data
         signal = np.mean(frame, axis=0)
@@ -48,8 +61,8 @@ def main():
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
         # Threshold the result
-        threshold = 600
-        fft_result[np.abs(fft_result) < threshold] = 0
+        # threshold = 600
+        # fft_result[np.abs(fft_result) < threshold] = 0
 
         # Plot the data
         dist_plot.update(
