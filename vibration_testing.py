@@ -23,7 +23,7 @@ def subtract_background(current_frame):
     return current_frame - background.astype(current_frame.dtype)
 
 
-def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
+def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.5):
     """
     Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
 
@@ -31,12 +31,14 @@ def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
         heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
         fft_meters (np.ndarray): The range bins in meters
         threshold (int): The threshold to use for identifying vibrations
-    """
 
+    Returns:
+        objects (list): A list of dictionaries containing object distance range and all frequencies where greater than threshold
+    """
     # Find the indices where the heatmap exceeds the threshold
     indices = np.where(heatmap > threshold)
 
-    locs = zip(indices[0], indices[1])
+    locs = zip(indices[0], indices[1])  # (vib_freq, distance)
 
     # Cluster the locs based on their distances to each other
     clusters = []
@@ -48,7 +50,7 @@ def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
                 loc_dist = fft_meters[loc[1]]
                 cluster_dist = fft_meters[cluster[0][1]]
 
-                if loc_dist - cluster_dist < max_distance:
+                if np.abs(loc_dist - cluster_dist) < max_distance:
                     cluster.append(loc)
                     break
             else:
@@ -57,12 +59,16 @@ def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
     # Calculate the average distance of each cluster
     objects = []
     for cluster in clusters:
-        distances = [fft_meters[loc[1]] for loc in cluster]
-        avg_distance = np.mean(distances)
+        min_dis = np.min([loc[1] for loc in cluster])
+        max_dis = np.max([loc[1] for loc in cluster])
+
+        frequencies = [(loc[0], heatmap[loc]) for loc in cluster]
+
         objects.append(
             {
-                "avg_distance": avg_distance,
-                "frequency": cluster[0][0],
+                "min_distance": min_dis,
+                "max_distance": max_dis,
+                "frequencies": frequencies,
             }
         )
 
@@ -144,19 +150,34 @@ def main():
         threshold = 100
         heatmap = np.where(heatmap > threshold, heatmap, 0)
 
+        objects = identify_vibrations(
+            heatmap, fft_meters, threshold=100, max_distance=0.25
+        )
+
         # Use OpenCV to display the heatmap
         heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
         heatmap = np.uint8(heatmap)
         heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
         heatmap = cv2.resize(heatmap, (800, 600))
+
+        # Draw lines on the min_distance and max_distance
+        for obj in objects:
+            min_distance = obj["min_distance"]
+            max_distance = obj["max_distance"]
+
+            # Draw a box around the min and max distance
+            cv2.rectangle(
+                heatmap,
+                (int(min_distance), 10),
+                (int(max_distance), heatmap.shape[0] - 10),
+                np.random.randint(0, 255, 3).tolist(),
+                2,
+            )
+
         cv2.imshow("Vibration Intensity Heatmap", heatmap)
         cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
 
-        objects = identify_vibrations(
-            heatmap, fft_meters, threshold=100, max_distance=0.25
-        )
-
-        print(objects)
+        # print(objects)
 
         while True:
             if cv2.waitKey(1) & 0xFF == ord("q"):
