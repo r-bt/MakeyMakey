@@ -14,12 +14,17 @@ import cv2
 import matplotlib.pyplot as plt
 
 
-def background_subtraction(frame):
-    after_subtraction = np.zeros_like(frame)
-    for i in range(1, frame.shape[0]):
-        after_subtraction[i - 1] = frame[i] - frame[i - 1]
+alpha = 0.6  # decay factor for running average
+background = None  # initialize
 
-    return after_subtraction
+
+def subtract_background(current_frame):
+    global background
+    if background is None:
+        background = current_frame.copy()
+        return np.zeros_like(current_frame)
+    background = alpha * background + (1 - alpha) * current_frame
+    return current_frame - background.astype(current_frame.dtype)
 
 
 def main():
@@ -50,14 +55,21 @@ def main():
     processed_frames = []
 
     for frame in data:
-        # Frame is shape (n_chirps, n_samples_per_chirp, n_receivers) of IQ samples from FMCW
+        # First average across the receivers
+        frame = np.mean(frame, axis=2)
 
-        frame = background_subtraction(frame)
+        # # First apply a hanning window
+        window = np.hanning(SAMPLES_PER_CHIRP)
+        frame *= window[None, :]  # apply along samples axis
 
-        signal = np.mean(frame, axis=2)
-        signal = np.mean(signal, axis=0)
+        frame = np.mean(frame, axis=0)
 
-        fft_result = fft(signal, axis=0)
+        # Apply background subtraction
+        frame = subtract_background(frame)
+
+        # signal = np.mean(frame, axis=0)
+
+        fft_result = fft(frame, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
@@ -65,6 +77,10 @@ def main():
         fft_result = fft_result[: SAMPLES_PER_CHIRP // 2]
         fft_freqs = fft_freqs[: SAMPLES_PER_CHIRP // 2]
         fft_meters = fft_meters[: SAMPLES_PER_CHIRP // 2]
+
+        # Threshold the fft result by magnitude
+        # threshold = 200
+        # fft_result = np.where(np.abs(fft_result) > threshold, fft_result, 0)
 
         processed_frames.append(fft_result)
 
@@ -79,6 +95,10 @@ def main():
         heatmap.append(magnitude)
 
     heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
+
+    # Apply a threshold to the heatmap
+    threshold = 1000
+    heatmap = np.where(heatmap > threshold, heatmap, 0)
 
     # Use matplot to plot the heatmap
     plt.imshow(heatmap, aspect="auto", cmap="hot", interpolation="nearest")

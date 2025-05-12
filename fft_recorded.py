@@ -11,13 +11,17 @@ from src.xwr.radar_config import RadarConfig
 import json
 import time
 
+alpha = 0.6  # decay factor for running average
+background = None  # initialize
 
-def background_subtraction(frame):
-    after_subtraction = np.zeros_like(frame)
-    for i in range(1, frame.shape[0]):
-        after_subtraction[i - 1] = frame[i] - frame[i - 1]
 
-    return after_subtraction
+def subtract_background(current_frame):
+    global background
+    if background is None:
+        background = current_frame.copy()
+        return np.zeros_like(current_frame)
+    background = alpha * background + (1 - alpha) * current_frame
+    return current_frame - background.astype(current_frame.dtype)
 
 
 def main():
@@ -45,18 +49,28 @@ def main():
     data = np.load(args.data)["data"]
 
     for frame in data:
-        frame = background_subtraction(frame)
+        # First average across the receivers
+        frame = np.mean(frame, axis=2)
 
-        signal = np.mean(frame, axis=0)
+        # # First apply a hanning window
+        window = np.hanning(SAMPLES_PER_CHIRP)
+        frame *= window[None, :]  # apply along samples axis
 
-        fft_result = fft(signal, axis=0)
+        frame = np.mean(frame, axis=0)
+
+        # Apply background subtraction
+        frame = subtract_background(frame)
+
+        # signal = np.mean(frame, axis=0)
+
+        fft_result = fft(frame, axis=0)
         fft_freqs = fftfreq(SAMPLES_PER_CHIRP, 1 / SAMPLE_RATE)
         fft_meters = fft_freqs * c / (2 * FREQ_SLOPE)
 
         # Plot the data
         dist_plot.update(
             fft_meters[: SAMPLES_PER_CHIRP // 2],
-            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2, :]),
+            np.abs(fft_result[: SAMPLES_PER_CHIRP // 2]),
         )
 
         app.processEvents()
