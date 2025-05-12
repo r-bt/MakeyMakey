@@ -84,13 +84,13 @@ def main():
 
         processed_frames.append(fft_result)
 
-    processed_frames = np.array(processed_frames)
+    processed_frames = np.array(processed_frames[:50])
 
     heatmap = []
 
     for range_bin in range(processed_frames.shape[1]):
         time_series = processed_frames[:, range_bin]  # shape: (n_chirps,)
-        f, t, stft_matrix = stft(time_series, fs=CHIRP_RATE, nperseg=128, noverlap=16)
+        f, t, stft_matrix = stft(time_series, fs=CHIRP_RATE, nperseg=25, noverlap=16)
         magnitude = np.abs(stft_matrix).mean(axis=1)  # avg across time windows
         heatmap.append(magnitude)
 

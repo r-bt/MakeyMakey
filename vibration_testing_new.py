@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 from scipy.fft import fft, fftfreq
 from scipy.signal import stft
-from src.radar import Radar
+from src.xwr.radar_config import RadarConfig
 import queue
 from src.dsp import subtract_background
 from multiprocessing import Process, Manager
@@ -91,9 +91,7 @@ def main():
     args = parser.parse_args()
 
     # Initalize the radar
-    radar = Radar(args.cfg)
-
-    params = radar.params
+    params = RadarConfig(args.cfg).get_params()
 
     c = 3e8  # speed of light - m/s
     SAMPLE_RATE = params["sample_rate"]  # digout sample rate in Hz
@@ -115,11 +113,8 @@ def main():
         )
         p.start()
 
-        def process_frame(msg):
-            frame = msg.get("data", None)
-
-            if frame is None:
-                return
+        def process_frame(frame):
+            # First get the frame
 
             # Average across the receivers
             frame = np.mean(frame, axis=2)
@@ -143,7 +138,10 @@ def main():
 
         # Read the saved data file
 
-        radar.run_polling(cb=process_frame)
+        data = np.load(args.data)["data"]
+
+        for frame in data:
+            process_frame(frame)
 
         p.join()
 
