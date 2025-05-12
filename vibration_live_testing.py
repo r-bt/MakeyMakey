@@ -4,9 +4,20 @@ from scipy.fft import fft, fftfreq
 from scipy.signal import stft
 from src.radar import Radar
 import queue
-from src.dsp import subtract_background
 from multiprocessing import Process, Manager
 import cv2
+
+alpha = 0.6  # decay factor for running average
+background = None  # initialize
+
+
+def subtract_background(current_frame):
+    global background
+    if background is None:
+        background = current_frame.copy()
+        return np.zeros_like(current_frame)
+    background = alpha * background + (1 - alpha) * current_frame
+    return current_frame - background.astype(current_frame.dtype)
 
 
 def init_plot(CHIRP_RATE, processed_frames, chunk_size=128):
