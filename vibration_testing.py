@@ -2,14 +2,10 @@ import argparse
 from src.radar import Radar
 import numpy as np
 from PyQt6 import QtWidgets
-from src.distance_plot import DistancePlot
 import sys
 from scipy.fft import fft, fftfreq
 from scipy.signal import stft
-import pandas as pd
-from src.xwr.dsp import reshape_frame
 from src.xwr.radar_config import RadarConfig
-import time
 import cv2
 import matplotlib.pyplot as plt
 
@@ -25,6 +21,52 @@ def subtract_background(current_frame):
         return np.zeros_like(current_frame)
     background = alpha * background + (1 - alpha) * current_frame
     return current_frame - background.astype(current_frame.dtype)
+
+
+def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
+    """
+    Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
+
+    Args:
+        heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
+        fft_meters (np.ndarray): The range bins in meters
+        threshold (int): The threshold to use for identifying vibrations
+    """
+
+    # Find the indices where the heatmap exceeds the threshold
+    indices = np.where(heatmap > threshold)
+
+    locs = zip(indices[0], indices[1])
+
+    # Cluster the locs based on their distances to each other
+    clusters = []
+    for loc in locs:
+        if len(clusters) == 0:
+            clusters.append([loc])
+        else:
+            for cluster in clusters:
+                loc_dist = fft_meters[loc[1]]
+                cluster_dist = fft_meters[cluster[0][1]]
+
+                if loc_dist - cluster_dist < max_distance:
+                    cluster.append(loc)
+                    break
+            else:
+                clusters.append([loc])
+
+    # Calculate the average distance of each cluster
+    objects = []
+    for cluster in clusters:
+        distances = [fft_meters[loc[1]] for loc in cluster]
+        avg_distance = np.mean(distances)
+        objects.append(
+            {
+                "avg_distance": avg_distance,
+                "frequency": cluster[0][0],
+            }
+        )
+
+    return objects
 
 
 def main():
@@ -102,23 +144,6 @@ def main():
         threshold = 100
         heatmap = np.where(heatmap > threshold, heatmap, 0)
 
-        # Use matplot to plot the heatmap
-        # plt.imshow(heatmap, aspect="auto", cmap="hot", interpolation="nearest")
-        # plt.colorbar(label="Magnitude")
-        # plt.xlabel("Range Bin")
-        # plt.ylabel("Vibration Frequency Bin")
-        # plt.title("Vibration Intensity Heatmap")
-
-        # # Set the x-ticks and y-ticks
-        # plt.xticks(
-        #     ticks=np.arange(0, len(fft_meters), step=10),
-        #     labels=[f"{x:.2f}" for x in fft_meters[::10]],
-        #     rotation=45,
-        # )
-
-        # # Show the plot
-        # plt.show()
-
         # Use OpenCV to display the heatmap
         heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
         heatmap = np.uint8(heatmap)
@@ -126,6 +151,12 @@ def main():
         heatmap = cv2.resize(heatmap, (800, 600))
         cv2.imshow("Vibration Intensity Heatmap", heatmap)
         cv2.setWindowTitle("Vibration Intensity Heatmap", "Vibration Intensity Heatmap")
+
+        objects = identify_vibrations(
+            heatmap, fft_meters, threshold=100, max_distance=0.25
+        )
+
+        print(objects)
 
         while True:
             if cv2.waitKey(1) & 0xFF == ord("q"):

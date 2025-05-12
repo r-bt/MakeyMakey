@@ -20,6 +20,52 @@ def subtract_background(current_frame):
     return current_frame - background.astype(current_frame.dtype)
 
 
+def identify_vibrations(heatmap, fft_meters, threshold=1000, max_distance=0.25):
+    """
+    Takes a heatmap, groups data into clusters and returns the strongest vibrations and their distances
+
+    Args:
+        heatmap (np.ndarray): The heatmap to process (vibration_freq_bins, range_bins)
+        fft_meters (np.ndarray): The range bins in meters
+        threshold (int): The threshold to use for identifying vibrations
+    """
+
+    # Find the indices where the heatmap exceeds the threshold
+    indices = np.where(heatmap > threshold)
+
+    locs = zip(indices[0], indices[1])
+
+    # Cluster the locs based on their distances to each other
+    clusters = []
+    for loc in locs:
+        if len(clusters) == 0:
+            clusters.append([loc])
+        else:
+            for cluster in clusters:
+                loc_dist = fft_meters[loc[1]]
+                cluster_dist = fft_meters[cluster[0][1]]
+
+                if loc_dist - cluster_dist < max_distance:
+                    cluster.append(loc)
+                    break
+            else:
+                clusters.append([loc])
+
+    # Calculate the average distance of each cluster
+    objects = []
+    for cluster in clusters:
+        distances = [fft_meters[loc[1]] for loc in cluster]
+        avg_distance = np.mean(distances)
+        objects.append(
+            {
+                "avg_distance": avg_distance,
+                "frequency": cluster[0][0],
+            }
+        )
+
+    return objects
+
+
 def init_plot(CHIRP_RATE, processed_frames, chunk_size=128):
     while True:
         if processed_frames.qsize() < chunk_size:
@@ -43,7 +89,7 @@ def init_plot(CHIRP_RATE, processed_frames, chunk_size=128):
             magnitude = np.abs(stft_matrix).mean(axis=1)
             heatmap.append(magnitude)
 
-        heatmap = np.array(heatmap).T
+        heatmap = np.array(heatmap).T  # shape: (vibration_freq_bins, range_bins)
 
         # Threshold
         threshold = 1000
