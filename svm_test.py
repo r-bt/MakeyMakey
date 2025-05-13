@@ -34,6 +34,9 @@ from sklearn.utils import shuffle
 
 X, Y = shuffle(X, Y)
 
+print("X shape:", np.array(X).shape)
+print("Y shape:", np.array(Y).shape)
+
 # # Divide into training and testing data
 from sklearn.model_selection import train_test_split
 
@@ -53,11 +56,22 @@ Y_pred = model.predict(X_test)
 print(classification_report(Y_test, Y_pred))
 print(confusion_matrix(Y_test, Y_pred))
 
+input("Press enter to continue...")
+
 # Save the model
 from joblib import dump, load
 
 # Save the model
 dump(model, "svm_model.joblib")
+dump(
+    [
+        X_train,
+        Y_train,
+        X_test,
+        Y_test,
+    ],
+    "svm_data.joblib",
+)
 
 # Load the model later
 model = load("svm_model.joblib")

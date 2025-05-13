@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import time
 from src.dsp import subtract_background
 
+
 alpha = 0.6  # decay factor for running average
 background = None  # initialize
 
@@ -106,22 +107,22 @@ def main():
         threshold = 50
         heatmap = np.where(heatmap > threshold, heatmap, 0)
 
-        objects = identify_vibrations(
-            heatmap, fft_meters, threshold=100, max_distance=0.2
-        )
+        # objects = identify_vibrations(
+        #     heatmap, fft_meters, threshold=100, max_distance=0.2
+        # )
 
-        for obj in objects:
-            print("Mean distance:", np.mean([obj["min_distance"], obj["max_distance"]]))
-            if (
-                np.abs(
-                    OTHERMILL_DISTANCES[0]
-                    - np.mean([obj["min_distance"], obj["max_distance"]])
-                )
-                < DISTANCE_THRESHOLD
-            ):
-                detections += 1
-                # print("Detected object at distance:", obj["min_distance"], "m")
-                # print("Frequencies:", obj["frequencies"])
+        # for obj in objects:
+        #     print("Mean distance:", np.mean([obj["min_distance"], obj["max_distance"]]))
+        #     if (
+        #         np.abs(
+        #             OTHERMILL_DISTANCES[0]
+        #             - np.mean([obj["min_distance"], obj["max_distance"]])
+        #         )
+        #         < DISTANCE_THRESHOLD
+        #     ):
+        #         detections += 1
+        # print("Detected object at distance:", obj["min_distance"], "m")
+        # print("Frequencies:", obj["frequencies"])
 
         # # # Use OpenCV to display the heatmap
         # heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX)
@@ -151,7 +152,7 @@ def main():
         #     ha="right",
         # )
 
-        print("distance", fft_meters[40])
+        print("distance", fft_meters[41])
 
         plt.show()
 

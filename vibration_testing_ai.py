@@ -11,7 +11,7 @@ from src.dsp import subtract_background, identify_vibrations
 # Other mills at 2.35, 3.9
 
 # OTHERMILL_DISTANCES = [1.3]
-OTHERMILL_DISTANCES = [2.35, 3.9]
+OTHERMILL_DISTANCES = [3.9]
 DISTANCE_THRESHOLD = 0.1
 
 alpha = 0.6  # decay factor for running average
